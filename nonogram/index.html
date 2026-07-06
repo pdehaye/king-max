@@ -12,6 +12,8 @@
 :root {
   --cell-size: 32px;
   --clue-size: 28px;
+  --clue-font-size: 11px;
+  --clue-min-width: 14px;
 }
 
 .board-frame {
@@ -60,10 +62,10 @@
 
 .nonogram-clue-num {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: var(--clue-font-size);
   font-weight: 600;
   color: var(--ink);
-  min-width: 14px;
+  min-width: var(--clue-min-width);
   text-align: center;
   line-height: 1;
 }
@@ -444,6 +446,31 @@ function formatTime(s) {
   return `${m}:${ss}`;
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function applyBoardSizing(rows, cols, rowClues, colClues) {
+  const maxRowClueLen = Math.max(...rowClues.map((clues) => clues.length), 1);
+  const maxColClueLen = Math.max(...colClues.map((clues) => clues.length), 1);
+
+  // Keep board legible while fitting common mobile widths.
+  const viewportBudget = clamp(window.innerWidth - 48, 280, 860);
+  const totalBoardColumns = cols + maxRowClueLen;
+  const totalBoardRows = rows + maxColClueLen;
+  const targetUnit = Math.floor(Math.min(viewportBudget / totalBoardColumns, viewportBudget / totalBoardRows));
+
+  const cellSize = clamp(targetUnit, 18, 44);
+  const clueSize = clamp(Math.round(cellSize * 0.85), 15, 36);
+  const clueFontSize = clamp(Math.round(clueSize * 0.42), 8, 14);
+  const clueMinWidth = clamp(Math.round(clueFontSize * 1.25), 10, 20);
+
+  boardEl.style.setProperty('--cell-size', `${cellSize}px`);
+  boardEl.style.setProperty('--clue-size', `${clueSize}px`);
+  boardEl.style.setProperty('--clue-font-size', `${clueFontSize}px`);
+  boardEl.style.setProperty('--clue-min-width', `${clueMinWidth}px`);
+}
+
 // ── New game ────────────────────────────────────────────────────────
 function startNewGame() {
   const difficulty = document.getElementById('difficultySelect').value;
@@ -469,6 +496,8 @@ function startNewGame() {
     grid = Array.from({ length: rowClues.length }, () =>
       new Array(colClues.length).fill(CELL_STATES.UNKNOWN)
     );
+
+    applyBoardSizing(rowClues.length, colClues.length, rowClues, colClues);
 
     if (stepAnnotationClearFn) { stepAnnotationClearFn(); stepAnnotationClearFn = null; }
     stepInterface = null;
@@ -776,6 +805,12 @@ document.getElementById('stepBtn').addEventListener('click', doStep);
 
 document.getElementById('rulesToggle').addEventListener('click', () => {
   document.getElementById('rules').classList.toggle('open');
+});
+
+window.addEventListener('resize', () => {
+  if (rowClues.length > 0 && colClues.length > 0) {
+    applyBoardSizing(rowClues.length, colClues.length, rowClues, colClues);
+  }
 });
 
 buildTacticControls();
