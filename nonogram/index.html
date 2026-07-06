@@ -170,6 +170,18 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
   font-size: 13px;
 }
 
+.chip.mistakes {
+  color: var(--seal);
+}
+
+.share-status {
+  min-height: 18px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin: 4px 0 0;
+}
+
 /* ── Win banner ─────────────────────────────────────── */
 .win-banner {
   display: none;
@@ -334,6 +346,9 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
 
   <div class="stats">
     <div class="chip">⏱ <b id="timer">0:00</b></div>
+    <div class="chip mistakes">✕ <b id="mistakes">0</b> mistakes</div>
+    <div class="chip">🧩 <b id="difficultyScore">–</b></div>
+    <div class="chip">Tier <b id="difficultyTier">–</b></div>
   </div>
 
   <div class="board-frame">
@@ -359,11 +374,17 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
       Step
     </button>
+    <button id="shareBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5l-1.5 1.5 2.5 2.5M10 12h4a4 4 0 0 1 0 8h-4a4 4 0 0 1 0-8z"/><path d="M10 12a4 4 0 0 1 0-8h4a4 4 0 0 1 0 8"/></svg>
+      Share puzzle
+    </button>
   </div>
+  <p class="share-status" id="shareStatus" aria-live="polite"></p>
 
   <div class="tactic-panel">
     <label>Tactics</label>
     <div id="tacticsList" class="tactics-list" aria-label="Tactic controls"></div>
+    <button id="resetWeightsBtn" class="weight-reset-btn" type="button">Reset tactic weights</button>
     <p class="tactic-status" id="tacticStatus" aria-live="polite"></p>
   </div>
 
@@ -400,7 +421,12 @@ import { CELL_STATES, isSolved } from '../js/nonogram/puzzle-logic.js';
 import { makeNonogramInterface } from '../js/nonogram/game-interface.js';
 import { NONOGRAM_TACTIC_DESCRIPTORS } from '../js/nonogram/tactics.js';
 import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
-import { generateNonogram } from '../js/nonogram/game-generation.js';
+import { generateNonogram, evaluateNonogramDifficulty } from '../js/nonogram/game-generation.js';
+import { NONOGRAM_TIER_LABELS } from '../js/nonogram/difficulty-scorer.js';
+import {
+  DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS,
+  normalizeNonogramDifficultyWeights
+} from '../js/nonogram/difficulty-weights.js';
 import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
 
 const STORYBOOK_TACTIC_QUERIES = {
@@ -413,6 +439,8 @@ const STORYBOOK_TACTIC_QUERIES = {
 };
 const STORYBOOK_DEFAULT_QUERY = '/docs/nonogram-tactics--docs';
 const STORYBOOK_DOCS_QUERY = '/docs/nonogram-tactics--docs';
+const BOARD_STATE_QUERY_KEY = 'board';
+const NONOGRAM_DIFFICULTY_WEIGHTS_STORAGE_KEY = 'nonogram-difficulty-weights-v1';
 
 // ── State ───────────────────────────────────────────────────────────
 let rowClues = [];
@@ -423,6 +451,10 @@ let solved = false;
 let seconds = 0;
 let timerInterval = null;
 let started = false;
+let mistakes = 0;
+let currentDifficultyScore = null;
+let currentDifficultyTier = null;
+let difficultyWeights = loadDifficultyWeights();
 let boardRefs = null; // { cellEls, clueRowEls, clueColEls }
 
 // Step-through state
@@ -431,7 +463,11 @@ let stepAnnotationClearFn = null;
 
 const boardEl = document.getElementById('board');
 const timerEl = document.getElementById('timer');
+const mistakesEl = document.getElementById('mistakes');
+const difficultyScoreEl = document.getElementById('difficultyScore');
+const difficultyTierEl = document.getElementById('difficultyTier');
 const hintTextEl = document.getElementById('hintText');
+const shareStatusEl = document.getElementById('shareStatus');
 const winBanner = document.getElementById('winBanner');
 const winStatsEl = document.getElementById('winStats');
 
@@ -461,6 +497,189 @@ function formatTime(s) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function updateMistakesDisplay() {
+  mistakesEl.textContent = String(mistakes);
+}
+
+function updateDifficultyDisplay() {
+  if (Number.isFinite(currentDifficultyScore)) {
+    difficultyScoreEl.textContent = String(Math.round(currentDifficultyScore));
+  } else {
+    difficultyScoreEl.textContent = '–';
+  }
+
+  if (Number.isInteger(currentDifficultyTier)) {
+    difficultyTierEl.textContent = NONOGRAM_TIER_LABELS[currentDifficultyTier] || `tier ${currentDifficultyTier}`;
+  } else {
+    difficultyTierEl.textContent = '–';
+  }
+}
+
+function setShareStatus(message, isError = false) {
+  shareStatusEl.textContent = message;
+  shareStatusEl.style.color = isError ? 'var(--seal)' : 'var(--ink-soft)';
+}
+
+function loadDifficultyWeights() {
+  try {
+    const raw = localStorage.getItem(NONOGRAM_DIFFICULTY_WEIGHTS_STORAGE_KEY);
+    if (!raw) return normalizeNonogramDifficultyWeights(DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS);
+    return normalizeNonogramDifficultyWeights(JSON.parse(raw));
+  } catch {
+    return normalizeNonogramDifficultyWeights(DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS);
+  }
+}
+
+function saveDifficultyWeights() {
+  localStorage.setItem(NONOGRAM_DIFFICULTY_WEIGHTS_STORAGE_KEY, JSON.stringify(difficultyWeights));
+}
+
+function setDisplayedWeight(tacticId, value) {
+  const next = normalizeNonogramDifficultyWeights(difficultyWeights);
+  next.deterministic[tacticId] = value;
+  difficultyWeights = normalizeNonogramDifficultyWeights(next);
+  saveDifficultyWeights();
+}
+
+function getDisplayedWeight(tacticId) {
+  return normalizeNonogramDifficultyWeights(difficultyWeights).deterministic[tacticId] ?? 0;
+}
+
+function refreshWeightInputs() {
+  const inputs = document.querySelectorAll('.tactic-weight-input');
+  inputs.forEach((input) => {
+    const tacticId = input.dataset.tacticId;
+    input.value = String(getDisplayedWeight(tacticId));
+  });
+}
+
+function recomputeDifficultyForCurrentPuzzle() {
+  if (rowClues.length === 0 || colClues.length === 0) return;
+  const evaluation = evaluateNonogramDifficulty(rowClues, colClues, { difficultyWeights });
+  currentDifficultyScore = evaluation.score;
+  currentDifficultyTier = evaluation.maxTier;
+  updateDifficultyDisplay();
+  updateBoardStateUrl();
+}
+
+function encodeStateBase64(value) {
+  return btoa(encodeURIComponent(value).replace(/%([0-9A-F]{2})/g, (_, hex) =>
+    String.fromCharCode(parseInt(hex, 16))
+  ));
+}
+
+function decodeStateBase64(value) {
+  return decodeURIComponent(Array.from(atob(value), (char) =>
+    `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`
+  ).join(''));
+}
+
+function isValidClueArray(value) {
+  return Array.isArray(value) && value.every((n) => Number.isInteger(n) && n >= 0);
+}
+
+function isValidSolutionValue(value) {
+  return value === CELL_STATES.FILLED || value === CELL_STATES.EMPTY;
+}
+
+function isValidGridValue(value) {
+  return value === CELL_STATES.UNKNOWN || isValidSolutionValue(value);
+}
+
+function normalize2DGrid(raw, rows, cols, validator) {
+  if (!Array.isArray(raw) || raw.length !== rows) return null;
+  const out = [];
+  for (let r = 0; r < rows; r++) {
+    if (!Array.isArray(raw[r]) || raw[r].length !== cols) return null;
+    const nextRow = [];
+    for (let c = 0; c < cols; c++) {
+      const value = raw[r][c];
+      if (!validator(value)) return null;
+      nextRow.push(value);
+    }
+    out.push(nextRow);
+  }
+  return out;
+}
+
+function encodeBoardStateForUrl() {
+  if (rowClues.length === 0 || colClues.length === 0 || !solution) return null;
+  const payload = {
+    rowClues,
+    colClues,
+    solution,
+    grid,
+    mistakes,
+    difficultyScore: currentDifficultyScore,
+    difficultyTier: currentDifficultyTier
+  };
+  return `v1.${encodeStateBase64(JSON.stringify(payload))}`;
+}
+
+function decodeBoardStateFromUrl(encoded) {
+  if (!encoded || typeof encoded !== 'string') return null;
+  const parts = encoded.split('.');
+  if (parts.length !== 2 || parts[0] !== 'v1') return null;
+
+  try {
+    const payload = JSON.parse(decodeStateBase64(parts[1]));
+    if (!payload || typeof payload !== 'object') return null;
+
+    const { rowClues: rawRowClues, colClues: rawColClues } = payload;
+    if (!Array.isArray(rawRowClues) || !Array.isArray(rawColClues)) return null;
+    const rows = rawRowClues.length;
+    const cols = rawColClues.length;
+    if (rows === 0 || cols === 0) return null;
+    if (!rawRowClues.every(isValidClueArray) || !rawColClues.every(isValidClueArray)) return null;
+
+    const decodedSolution = normalize2DGrid(payload.solution, rows, cols, isValidSolutionValue);
+    const decodedGrid = normalize2DGrid(payload.grid, rows, cols, isValidGridValue);
+    if (!decodedSolution || !decodedGrid) return null;
+
+    const decodedMistakes = Number.isInteger(payload.mistakes) && payload.mistakes >= 0
+      ? payload.mistakes
+      : 0;
+
+    const decodedDifficultyScore = Number.isFinite(payload.difficultyScore)
+      ? payload.difficultyScore
+      : null;
+    const decodedDifficultyTier = Number.isInteger(payload.difficultyTier) && payload.difficultyTier >= 1
+      ? payload.difficultyTier
+      : null;
+
+    return {
+      rowClues: rawRowClues,
+      colClues: rawColClues,
+      solution: decodedSolution,
+      grid: decodedGrid,
+      mistakes: decodedMistakes,
+      difficultyScore: decodedDifficultyScore,
+      difficultyTier: decodedDifficultyTier
+    };
+  } catch {
+    return null;
+  }
+}
+
+function updateBoardStateUrl() {
+  const encoded = encodeBoardStateForUrl();
+  const url = new URL(window.location.href);
+  if (!encoded) {
+    url.searchParams.delete(BOARD_STATE_QUERY_KEY);
+  } else {
+    url.searchParams.set(BOARD_STATE_QUERY_KEY, encoded);
+  }
+  window.history.replaceState(null, '', url.toString());
+}
+
+function loadBoardStateFromUrl() {
+  const url = new URL(window.location.href);
+  const encoded = url.searchParams.get(BOARD_STATE_QUERY_KEY);
+  if (!encoded) return { snapshot: null, invalid: false };
+  const snapshot = decodeBoardStateFromUrl(encoded);
+  return snapshot ? { snapshot, invalid: false } : { snapshot: null, invalid: true };
 }
 
 function getStorybookBaseUrl() {
@@ -513,6 +732,56 @@ function applyBoardSizing(rows, cols, rowClues, colClues) {
   boardEl.style.setProperty('--clue-min-width', `${clueMinWidth}px`);
 }
 
+function applySnapshotToBoard(snapshot) {
+  rowClues = snapshot.rowClues;
+  colClues = snapshot.colClues;
+  solution = snapshot.solution;
+  grid = snapshot.grid.map((row) => row.slice());
+  mistakes = snapshot.mistakes || 0;
+  if (Number.isFinite(snapshot.difficultyScore) && Number.isInteger(snapshot.difficultyTier)) {
+    currentDifficultyScore = snapshot.difficultyScore;
+    currentDifficultyTier = snapshot.difficultyTier;
+  } else {
+    const evaluation = evaluateNonogramDifficulty(rowClues, colClues, { difficultyWeights });
+    currentDifficultyScore = evaluation.score;
+    currentDifficultyTier = evaluation.maxTier;
+  }
+  solved = false;
+
+  applyBoardSizing(rowClues.length, colClues.length, rowClues, colClues);
+
+  if (stepAnnotationClearFn) { stepAnnotationClearFn(); stepAnnotationClearFn = null; }
+  stepInterface = null;
+  hintTextEl.textContent = '';
+
+  boardRefs = renderNonogramBoard(boardEl, rowClues, colClues, grid, {
+    onCellChange: handleCellChange
+  });
+  refreshClueHighlights(
+    boardRefs.cellEls,
+    boardRefs.clueRowEls,
+    boardRefs.clueColEls,
+    grid,
+    rowClues,
+    colClues
+  );
+
+  updateMistakesDisplay();
+  updateDifficultyDisplay();
+  if (isSolved(grid, rowClues, colClues)) {
+    solved = true;
+    clearInterval(timerInterval);
+    timerInterval = null;
+    started = false;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
+    winBanner.classList.add('visible');
+  } else {
+    winBanner.classList.remove('visible');
+  }
+
+  updateBoardStateUrl();
+}
+
 // ── New game ────────────────────────────────────────────────────────
 function startNewGame() {
   const difficulty = document.getElementById('difficultySelect').value;
@@ -523,10 +792,16 @@ function startNewGame() {
   solved = false;
   winBanner.classList.remove('visible');
   resetTimer();
+  mistakes = 0;
+  currentDifficultyScore = null;
+  currentDifficultyTier = null;
+  updateMistakesDisplay();
+  updateDifficultyDisplay();
+  setShareStatus('');
 
   // Use setTimeout so the UI can repaint first
   setTimeout(() => {
-    const puzzle = generateNonogram(size, { difficulty });
+    const puzzle = generateNonogram(size, { difficulty, difficultyWeights });
     if (!puzzle) {
       hintTextEl.textContent = 'Could not generate a puzzle. Try again.';
       return;
@@ -535,6 +810,8 @@ function startNewGame() {
     rowClues = puzzle.rowClues;
     colClues = puzzle.colClues;
     solution = puzzle.solution;
+    currentDifficultyScore = Number.isFinite(puzzle.score) ? puzzle.score : null;
+    currentDifficultyTier = Number.isInteger(puzzle.tier) ? puzzle.tier : null;
     grid = Array.from({ length: rowClues.length }, () =>
       new Array(colClues.length).fill(CELL_STATES.UNKNOWN)
     );
@@ -548,12 +825,28 @@ function startNewGame() {
     boardRefs = renderNonogramBoard(boardEl, rowClues, colClues, grid, {
       onCellChange: handleCellChange
     });
+    refreshClueHighlights(
+      boardRefs.cellEls,
+      boardRefs.clueRowEls,
+      boardRefs.clueColEls,
+      grid,
+      rowClues,
+      colClues
+    );
+    updateDifficultyDisplay();
+    updateBoardStateUrl();
   }, 10);
 }
 
 // ── Cell change handler ────────────────────────────────────────────
 function handleCellChange(r, c, newState) {
   startTimer();
+
+  if (newState === CELL_STATES.FILLED && solution[r][c] !== CELL_STATES.FILLED) {
+    mistakes++;
+    updateMistakesDisplay();
+  }
+
   // Sync visual with grid
   if (boardRefs) {
     refreshClueHighlights(
@@ -563,11 +856,12 @@ function handleCellChange(r, c, newState) {
       grid, rowClues, colClues
     );
   }
+  updateBoardStateUrl();
   // Check win
   if (isSolved(grid, rowClues, colClues)) {
     clearInterval(timerInterval);
     solved = true;
-    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
     winBanner.classList.add('visible');
     return;
   }
@@ -598,7 +892,12 @@ function clearBoard() {
   stepInterface = null;
   hintTextEl.textContent = '';
   resetTimer();
+  mistakes = 0;
+  updateMistakesDisplay();
+  updateDifficultyDisplay();
   solved = false;
+  setShareStatus('');
+  updateBoardStateUrl();
 }
 
 // ── Hint ──────────────────────────────────────────────────────────
@@ -672,9 +971,10 @@ function doStep() {
       if (isSolved(grid, rowClues, colClues)) {
         clearInterval(timerInterval);
         solved = true;
-        winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+        winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
         winBanner.classList.add('visible');
       }
+      updateBoardStateUrl();
       return;
     }
   }
@@ -751,10 +1051,28 @@ function applyTacticById(tacticId, options = {}) {
   if (isSolved(grid, rowClues, colClues)) {
     clearInterval(timerInterval);
     solved = true;
-    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
     winBanner.classList.add('visible');
   }
+  updateBoardStateUrl();
   return true;
+}
+
+async function sharePuzzle() {
+  if (rowClues.length === 0 || colClues.length === 0) {
+    setShareStatus('No puzzle loaded.', true);
+    return;
+  }
+
+  updateBoardStateUrl();
+  const url = window.location.href;
+
+  try {
+    await navigator.clipboard.writeText(url);
+    setShareStatus('Puzzle link copied.');
+  } catch {
+    setShareStatus('Could not copy puzzle link.', true);
+  }
 }
 
 function getEnabledTacticIds() {
@@ -803,6 +1121,29 @@ function buildTacticControls() {
     applyBtn.textContent = tactic.label;
     applyBtn.title = `Apply ${tactic.label} once`;
 
+    const weightsWrap = document.createElement('div');
+    weightsWrap.className = 'tactic-weights';
+
+    const weightLabel = document.createElement('label');
+    weightLabel.className = 'tactic-weight';
+    weightLabel.title = `Difficulty weight for ${tactic.label}`;
+
+    const tag = document.createElement('span');
+    tag.textContent = 'w';
+
+    const weightInput = document.createElement('input');
+    weightInput.type = 'number';
+    weightInput.min = '0';
+    weightInput.step = '1';
+    weightInput.className = 'tactic-weight-input';
+    weightInput.dataset.tacticId = tactic.id;
+    weightInput.value = String(getDisplayedWeight(tactic.id));
+    weightInput.ariaLabel = `Weight for ${tactic.label}`;
+
+    weightLabel.appendChild(tag);
+    weightLabel.appendChild(weightInput);
+    weightsWrap.appendChild(weightLabel);
+
     const assistLabel = document.createElement('label');
     assistLabel.className = 'assist-toggle';
     assistLabel.title = 'Continuously apply this tactic while you play';
@@ -828,6 +1169,7 @@ function buildTacticControls() {
     assistLabel.appendChild(assistText);
 
     row.appendChild(applyBtn);
+    row.appendChild(weightsWrap);
     row.appendChild(assistLabel);
     row.appendChild(storyBtn);
     list.appendChild(row);
@@ -852,7 +1194,26 @@ function buildTacticControls() {
   list.addEventListener('change', (e) => {
     if (e.target.classList.contains('assist-checkbox')) {
       runEnabledTacticsContinuous({ statusIfNoProgress: true });
+      return;
     }
+
+    if (e.target.classList.contains('tactic-weight-input')) {
+      const tacticId = e.target.dataset.tacticId;
+      const parsed = Number(e.target.value);
+      const nextValue = Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : getDisplayedWeight(tacticId);
+      setDisplayedWeight(tacticId, nextValue);
+      refreshWeightInputs();
+      recomputeDifficultyForCurrentPuzzle();
+    }
+  });
+
+  const resetWeightsBtn = document.getElementById('resetWeightsBtn');
+  resetWeightsBtn.addEventListener('click', () => {
+    difficultyWeights = normalizeNonogramDifficultyWeights(DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS);
+    saveDifficultyWeights();
+    refreshWeightInputs();
+    recomputeDifficultyForCurrentPuzzle();
+    setTacticStatus('Tactic weights reset.');
   });
 }
 
@@ -862,6 +1223,7 @@ document.getElementById('playAgainBtn').addEventListener('click', startNewGame);
 document.getElementById('clearBtn').addEventListener('click', clearBoard);
 document.getElementById('hintBtn').addEventListener('click', giveHint);
 document.getElementById('stepBtn').addEventListener('click', doStep);
+document.getElementById('shareBtn').addEventListener('click', sharePuzzle);
 
 document.getElementById('rulesToggle').addEventListener('click', () => {
   document.getElementById('rules').classList.toggle('open');
@@ -876,8 +1238,17 @@ window.addEventListener('resize', () => {
 buildTacticControls();
 wireStorybookLinks();
 
-// Start automatically
-startNewGame();
+const { snapshot: urlSnapshot, invalid: invalidUrlState } = loadBoardStateFromUrl();
+if (invalidUrlState) {
+  setShareStatus('Invalid puzzle link ignored.', true);
+}
+
+if (urlSnapshot) {
+  resetTimer();
+  applySnapshotToBoard(urlSnapshot);
+} else {
+  startNewGame();
+}
 </script>
 </body>
 </html>

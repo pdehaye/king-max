@@ -11,6 +11,7 @@
 import { CELL_STATES, computeCluesForLine, isSolved } from './puzzle-logic.js';
 import { makeNonogramInterface } from './game-interface.js';
 import { NONOGRAM_TACTIC_DESCRIPTORS } from './tactics.js';
+import { scoreNonogramTrace } from './difficulty-scorer.js';
 
 /**
  * Generate a nonogram puzzle.
@@ -23,7 +24,11 @@ import { NONOGRAM_TACTIC_DESCRIPTORS } from './tactics.js';
  *   Returns null when no suitable puzzle found within maxAttempts.
  */
 export function generateNonogram(size = 5, options = {}) {
-  const { difficulty = 'medium', maxAttempts = 200 } = options;
+  const {
+    difficulty = 'medium',
+    maxAttempts = 200,
+    difficultyWeights
+  } = options;
 
   // Determine which tactic tiers are allowed based on difficulty
   const maxTier = { easy: 1, medium: 2, hard: 3 }[difficulty] ?? 2;
@@ -36,13 +41,15 @@ export function generateNonogram(size = 5, options = {}) {
       computeCluesForLine(solution.map((row) => row[c]))
     );
 
-    const result = trySolveWithTactics(rowClues, colClues, allowedTactics);
+    const result = trySolveWithTactics(rowClues, colClues, allowedTactics, { difficultyWeights });
     if (result.solved) {
       return {
         rowClues,
         colClues,
         solution,
-        tier: maxTier
+        tier: result.maxTier,
+        score: result.score,
+        trace: result.trace
       };
     }
   }
@@ -54,8 +61,10 @@ export function generateNonogram(size = 5, options = {}) {
  * Attempt to solve a nonogram using only the specified tactics.
  * Returns { solved: boolean }.
  */
-export function trySolveWithTactics(rowClues, colClues, tactics) {
+export function trySolveWithTactics(rowClues, colClues, tactics, options = {}) {
+  const { difficultyWeights } = options;
   const state = makeNonogramInterface(rowClues, colClues);
+  const trace = [];
 
   let changed = true;
   let iterations = 0;
@@ -65,14 +74,41 @@ export function trySolveWithTactics(rowClues, colClues, tactics) {
     changed = false;
     iterations++;
     for (const tactic of tactics) {
+      const prevAnnotationCount = state.getAnnotations().length;
       if (tactic.fn(state)) {
+        const newAnnotations = state.getAnnotations().slice(prevAnnotationCount);
+        const observedConstraints = newAnnotations.length > 0
+          ? Math.max(...newAnnotations.map((annotation) =>
+            Array.isArray(annotation?.observed) ? annotation.observed.length : 1
+          ))
+          : 1;
+        trace.push({
+          tacticId: tactic.id,
+          tier: tactic.tier,
+          observedConstraints
+        });
         changed = true;
         break; // restart from first tactic
       }
     }
   }
 
-  return { solved: state.isDone() };
+  const { score, maxTier } = scoreNonogramTrace(trace, difficultyWeights);
+
+  return {
+    solved: state.isDone(),
+    score,
+    maxTier,
+    trace
+  };
+}
+
+/**
+ * Evaluate a nonogram puzzle difficulty from deterministic tactics.
+ * Uses all known nonogram tactics regardless of puzzle generation target level.
+ */
+export function evaluateNonogramDifficulty(rowClues, colClues, options = {}) {
+  return trySolveWithTactics(rowClues, colClues, NONOGRAM_TACTIC_DESCRIPTORS, options);
 }
 
 // ─── Internal helpers ────────────────────────────────────────────────────────

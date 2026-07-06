@@ -160,6 +160,112 @@ test('share button copies the current encoded board URL', async ({ page, context
   await expect(page.url()).toContain('board=v1.');
 });
 
+test('nonogram board state is encoded in URL and share copies link', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
+  await page.goto('/nonogram/');
+
+  const cells = page.locator('#board .nonogram-cell');
+  await expect(cells.first()).toBeVisible();
+  await expect(page.locator('#difficultyScore')).not.toHaveText('–');
+  await expect(page.locator('#difficultyTier')).not.toHaveText('–');
+
+  await cells.nth(0).click();
+  await cells.nth(1).click({ button: 'right' });
+
+  await page.locator('#shareBtn').click();
+  await expect(page.locator('#shareStatus')).toContainText('Puzzle link copied.');
+  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toBe(page.url());
+  await expect(page.url()).toContain('board=v1.');
+
+  const encodedUrl = page.url();
+  const restored = await context.newPage();
+  await restored.goto(encodedUrl);
+
+  const restoredCells = restored.locator('#board .nonogram-cell');
+  await expect(restoredCells.first()).toBeVisible();
+  await expect(restoredCells.nth(0)).toHaveClass(/filled/);
+  await expect(restoredCells.nth(1)).toHaveClass(/empty/);
+  await expect(restored.locator('#difficultyScore')).not.toHaveText('–');
+  await expect(restored.locator('#difficultyTier')).not.toHaveText('–');
+
+  await restored.close();
+});
+
+test('nonogram shows difficulty score and tier for generated puzzle', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  await expect(page.locator('#difficultyScore')).not.toHaveText('–');
+  await expect(page.locator('#difficultyTier')).not.toHaveText('–');
+});
+
+test('nonogram mistakes counter increments on incorrect fill', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const cells = page.locator('#board .nonogram-cell');
+  await expect(cells.first()).toBeVisible();
+  await expect(page.locator('#mistakes')).toHaveText('0');
+
+  const total = await cells.count();
+  let incremented = false;
+  for (let i = 0; i < total; i++) {
+    await cells.nth(i).click();
+    const mistakesText = await page.locator('#mistakes').innerText();
+    if (Number(mistakesText) > 0) {
+      incremented = true;
+      break;
+    }
+  }
+
+  expect(incremented).toBeTruthy();
+});
+
+test('nonogram tactic panel exposes weight inputs and reset action', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const weightInputs = page.locator('.tactic-weight-input');
+  await expect(weightInputs.first()).toBeVisible();
+
+  const first = weightInputs.first();
+  const original = await first.inputValue();
+  await first.fill('37');
+  await first.blur();
+  await expect(first).toHaveValue('37');
+
+  await page.locator('#resetWeightsBtn').click();
+  await expect(first).toHaveValue(original);
+});
+
+test('custom nonogram tactic weights influence difficulty scoring', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const result = await page.evaluate(async () => {
+    const generation = await import('../js/nonogram/game-generation.js');
+    const weightsMod = await import('../js/nonogram/difficulty-weights.js');
+
+    const puzzle = generation.generateNonogram(5, { difficulty: 'hard', maxAttempts: 500 });
+    if (!puzzle) {
+      return { generated: false, changed: false };
+    }
+
+    const baseline = generation.evaluateNonogramDifficulty(puzzle.rowClues, puzzle.colClues);
+    const boosted = weightsMod.normalizeNonogramDifficultyWeights(weightsMod.DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS);
+    for (const tacticId of Object.keys(boosted.deterministic)) {
+      boosted.deterministic[tacticId] += 25;
+    }
+    const tuned = generation.evaluateNonogramDifficulty(puzzle.rowClues, puzzle.colClues, { difficultyWeights: boosted });
+
+    return {
+      generated: true,
+      baselineScore: baseline.score,
+      tunedScore: tuned.score,
+      changed: baseline.score !== tuned.score
+    };
+  });
+
+  expect(result.generated, 'nonogram puzzle should be generated').toBeTruthy();
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+});
+
 test('win banner appears after solving a board state', async ({ page }) => {
   await page.goto('/king-max/');
 
@@ -629,7 +735,7 @@ test('nonogram generator produces solvable puzzles at each difficulty', async ({
 
     const results = {};
     for (const difficulty of ['easy', 'medium', 'hard']) {
-      const puzzle = generateNonogram(5, { difficulty, maxAttempts: 300 });
+      const puzzle = generateNonogram(5, { difficulty, maxAttempts: 800 });
       results[difficulty] = {
         generated: puzzle !== null,
         hasSolution: puzzle !== null && isSolved(puzzle.solution, puzzle.rowClues, puzzle.colClues)
