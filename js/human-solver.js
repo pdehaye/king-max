@@ -40,6 +40,7 @@ export function humanSolve(n, region, options = {}) {
   let score = 0;
   let maxTier = 0;
   let lastObservedRegions = null;
+  const trace = [];
 
   function candidatesInRow(r) { const a = []; for (let c = 0; c < n; c++) if (possible[r][c]) a.push(c); return a; }
   function candidatesInCol(c) { const a = []; for (let r = 0; r < n; r++) if (possible[r][c]) a.push(r); return a; }
@@ -67,16 +68,51 @@ export function humanSolve(n, region, options = {}) {
     eliminateForQueen(r, c);
   }
 
+  // --- GameInterface implementation ---
+
+  function candidatesAt(constraint) {
+    const { type, index } = constraint;
+    if (type === 'row') {
+      return candidatesInRow(index).map((c) => ({ r: index, c }));
+    }
+    if (type === 'col') {
+      return candidatesInCol(index).map((r) => ({ r, c: index }));
+    }
+    return candidatesInRegion(index);
+  }
+
+  function constraints() {
+    const result = [];
+    for (let r = 0; r < n; r++) if (!rowDone[r]) result.push({ type: 'row', index: r });
+    for (let c = 0; c < n; c++) if (!colDone[c]) result.push({ type: 'col', index: c });
+    for (let reg = 0; reg < n; reg++) if (!regionDone[reg]) result.push({ type: 'region', index: reg });
+    return result;
+  }
+
+  function eliminate(cell) {
+    if (possible[cell.r][cell.c]) {
+      possible[cell.r][cell.c] = false;
+      return true;
+    }
+    return false;
+  }
+
+  function regionOf(cell) {
+    return region[cell.r][cell.c];
+  }
+
+  // ---
+
   const ctx = {
     n,
-    region,
-    possible,
-    rowDone,
-    colDone,
-    regionDone,
-    candidatesInRow,
-    candidatesInCol,
-    candidatesInRegion,
+    candidatesAt,
+    constraints,
+    place: (cell, tier) => placeQueen(cell.r, cell.c, tier),
+    isDone: () => placedCount === n,
+    stateSnapshot: () => snapshot(),
+    eliminate,
+    regionOf,
+    // Kept for backward compatibility and internal use
     placeQueen,
     getScore: () => score,
     setScore: (next) => { score = next; },
@@ -97,6 +133,7 @@ export function humanSolve(n, region, options = {}) {
           score += scoreForDeterministicStep(difficultyWeights, tactic.id, observedRegions);
           const stepTier = tierForDeterministicStep(tactic.id, observedRegions);
           if (stepTier > maxTier) maxTier = stepTier;
+          trace.push({ tacticId: tactic.id, tier: stepTier, observedConstraints: observedRegions });
           changed = true;
           break;
         }
@@ -130,6 +167,7 @@ export function humanSolve(n, region, options = {}) {
     if (bestRow === -1 || bestCands.length === 0) return false;
     if (maxTier < 4) maxTier = 4;
     score += difficultyWeights.guess;
+    trace.push({ tacticId: 'guess', tier: 4, observedConstraints: 0 });
     for (const c of bestCands) {
       const snap = snapshot();
       placeQueen(bestRow, c, 4);
@@ -143,5 +181,5 @@ export function humanSolve(n, region, options = {}) {
 
   if (!isSolved()) guessAndCheck();
 
-  return { solved: isSolved(), score, tier: maxTier };
+  return { solved: isSolved(), score, tier: maxTier, trace };
 }

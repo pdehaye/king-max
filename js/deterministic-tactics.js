@@ -18,116 +18,71 @@ function combinations(arr, k) {
 }
 
 export function tryHiddenSingles(state) {
-  const {
-    n: size,
-    rowDone: solvedRows,
-    colDone: solvedCols,
-    regionDone: solvedRegions,
-    candidatesInRow: rowCandidates,
-    candidatesInCol: colCandidates,
-    candidatesInRegion: regionCandidates,
-    placeQueen: place
-  } = state;
-
-  for (let r = 0; r < size; r++) {
-    if (solvedRows[r]) continue;
-    const cands = rowCandidates(r);
+  for (const constraint of state.constraints()) {
+    const cands = state.candidatesAt(constraint);
     if (cands.length === 1) {
-      place(r, cands[0], 1);
+      state.place(cands[0], 1);
       return true;
     }
   }
-  for (let c = 0; c < size; c++) {
-    if (solvedCols[c]) continue;
-    const cands = colCandidates(c);
-    if (cands.length === 1) {
-      place(cands[0], c, 1);
-      return true;
-    }
-  }
-  for (let reg = 0; reg < size; reg++) {
-    if (solvedRegions[reg]) continue;
-    const cands = regionCandidates(reg);
-    if (cands.length === 1) {
-      place(cands[0].r, cands[0].c, 1);
-      return true;
-    }
-  }
-
   return false;
 }
 
 export function tryLockedCandidates(state) {
-  const {
-    n: size,
-    region: regionMap,
-    possible: possibleMap,
-    rowDone: solvedRows,
-    colDone: solvedCols,
-    regionDone: solvedRegions,
-    candidatesInRow: rowCandidates,
-    candidatesInCol: colCandidates,
-    candidatesInRegion: regionCandidates
-  } = state;
-
   let progressed = false;
-  for (let reg = 0; reg < size; reg++) {
-    if (solvedRegions[reg]) continue;
-    const cands = regionCandidates(reg);
+
+  for (const c of state.constraints()) {
+    if (c.type !== 'region') continue;
+    const cands = state.candidatesAt(c);
     if (cands.length === 0) continue;
+
     const rows = new Set(cands.map((p) => p.r));
     const cols = new Set(cands.map((p) => p.c));
+
     if (rows.size === 1) {
       const r = [...rows][0];
-      for (let c = 0; c < size; c++) {
-        if (regionMap[r][c] !== reg && possibleMap[r][c]) {
-          possibleMap[r][c] = false;
-          progressed = true;
+      for (const cell of state.candidatesAt({ type: 'row', index: r })) {
+        if (state.regionOf(cell) !== c.index) {
+          if (state.eliminate(cell)) progressed = true;
         }
       }
     }
+
     if (cols.size === 1) {
-      const c = [...cols][0];
-      for (let r = 0; r < size; r++) {
-        if (regionMap[r][c] !== reg && possibleMap[r][c]) {
-          possibleMap[r][c] = false;
-          progressed = true;
+      const col = [...cols][0];
+      for (const cell of state.candidatesAt({ type: 'col', index: col })) {
+        if (state.regionOf(cell) !== c.index) {
+          if (state.eliminate(cell)) progressed = true;
         }
       }
     }
   }
 
-  for (let r = 0; r < size; r++) {
-    if (solvedRows[r]) continue;
-    const cands = rowCandidates(r);
+  for (const c of state.constraints()) {
+    if (c.type !== 'row') continue;
+    const cands = state.candidatesAt(c);
     if (cands.length === 0) continue;
-    const regs = new Set(cands.map((c) => regionMap[r][c]));
+    const regs = new Set(cands.map((cell) => state.regionOf(cell)));
     if (regs.size === 1) {
       const reg = [...regs][0];
-      for (let rr = 0; rr < size; rr++) {
-        for (let cc = 0; cc < size; cc++) {
-          if (rr !== r && regionMap[rr][cc] === reg && possibleMap[rr][cc]) {
-            possibleMap[rr][cc] = false;
-            progressed = true;
-          }
+      for (const cell of state.candidatesAt({ type: 'region', index: reg })) {
+        if (cell.r !== c.index) {
+          if (state.eliminate(cell)) progressed = true;
         }
       }
     }
   }
 
-  for (let c = 0; c < size; c++) {
-    if (solvedCols[c]) continue;
-    const cands = colCandidates(c);
+  for (const c of state.constraints()) {
+    if (c.type !== 'col') continue;
+    const cands = state.candidatesAt(c);
     if (cands.length === 0) continue;
-    const regs = new Set(cands.map((r) => regionMap[r][c]));
+    const regs = new Set(cands.map((cell) => state.regionOf(cell)));
     if (regs.size === 1) {
       const reg = [...regs][0];
-      for (let rr = 0; rr < size; rr++) {
-        for (let cc = 0; cc < size; cc++) {
-          if (cc !== c && regionMap[rr][cc] === reg && possibleMap[rr][cc]) {
-            possibleMap[rr][cc] = false;
-            progressed = true;
-          }
+      for (const cell of state.candidatesAt({ type: 'region', index: reg })) {
+        if (cell.c !== c.index) {
+          if (state.eliminate(cell)) progressed = true;
         }
       }
     }
@@ -137,37 +92,21 @@ export function tryLockedCandidates(state) {
 }
 
 export function trySubsets(state) {
-  const {
-    n: size,
-    region: regionMap,
-    possible: possibleMap,
-    rowDone: solvedRows,
-    colDone: solvedCols,
-    regionDone: solvedRegions,
-    candidatesInRegion: regionCandidates
-  } = state;
-
+  const size = state.n;
   const maxK = Math.min(4, size);
-  const unsolvedRegions = [];
-  const unsolvedRows = [];
-  const unsolvedCols = [];
-  for (let reg = 0; reg < size; reg++) {
-    if (!solvedRegions[reg]) unsolvedRegions.push(reg);
-  }
-  for (let r = 0; r < size; r++) {
-    if (!solvedRows[r]) unsolvedRows.push(r);
-  }
-  for (let c = 0; c < size; c++) {
-    if (!solvedCols[c]) unsolvedCols.push(c);
-  }
+
+  const allConstraints = state.constraints();
+  const unsolvedRegions = allConstraints.filter((c) => c.type === 'region').map((c) => c.index);
+  const unsolvedRows = allConstraints.filter((c) => c.type === 'row').map((c) => c.index);
+  const unsolvedCols = allConstraints.filter((c) => c.type === 'col').map((c) => c.index);
+  const unsolvedRegionSet = new Set(unsolvedRegions);
 
   function collectRegionsInRows(rows) {
     const regions = new Set();
     for (const r of rows) {
-      for (let c = 0; c < size; c++) {
-        if (!possibleMap[r][c]) continue;
-        const reg = regionMap[r][c];
-        if (!solvedRegions[reg]) regions.add(reg);
+      for (const cell of state.candidatesAt({ type: 'row', index: r })) {
+        const reg = state.regionOf(cell);
+        if (unsolvedRegionSet.has(reg)) regions.add(reg);
       }
     }
     return regions;
@@ -175,11 +114,10 @@ export function trySubsets(state) {
 
   function collectRegionsInCols(cols) {
     const regions = new Set();
-    for (const c of cols) {
-      for (let r = 0; r < size; r++) {
-        if (!possibleMap[r][c]) continue;
-        const reg = regionMap[r][c];
-        if (!solvedRegions[reg]) regions.add(reg);
+    for (const col of cols) {
+      for (const cell of state.candidatesAt({ type: 'col', index: col })) {
+        const reg = state.regionOf(cell);
+        if (unsolvedRegionSet.has(reg)) regions.add(reg);
       }
     }
     return regions;
@@ -192,7 +130,7 @@ export function trySubsets(state) {
       let anyEmpty = false;
 
       for (const reg of combo) {
-        const cands = regionCandidates(reg);
+        const cands = state.candidatesAt({ type: 'region', index: reg });
         if (cands.length === 0) {
           anyEmpty = true;
           break;
@@ -208,10 +146,9 @@ export function trySubsets(state) {
       if (rowSet.size === k) {
         let progressed = false;
         for (const r of rowSet) {
-          for (let c = 0; c < size; c++) {
-            if (!combo.includes(regionMap[r][c]) && possibleMap[r][c]) {
-              possibleMap[r][c] = false;
-              progressed = true;
+          for (const cell of state.candidatesAt({ type: 'row', index: r })) {
+            if (!combo.includes(state.regionOf(cell))) {
+              if (state.eliminate(cell)) progressed = true;
             }
           }
         }
@@ -223,11 +160,10 @@ export function trySubsets(state) {
 
       if (colSet.size === k) {
         let progressed = false;
-        for (const c of colSet) {
-          for (let r = 0; r < size; r++) {
-            if (!combo.includes(regionMap[r][c]) && possibleMap[r][c]) {
-              possibleMap[r][c] = false;
-              progressed = true;
+        for (const col of colSet) {
+          for (const cell of state.candidatesAt({ type: 'col', index: col })) {
+            if (!combo.includes(state.regionOf(cell))) {
+              if (state.eliminate(cell)) progressed = true;
             }
           }
         }
@@ -243,14 +179,11 @@ export function trySubsets(state) {
       if (regions.size !== k) continue;
 
       let progressed = false;
-      for (let r = 0; r < size; r++) {
+      for (const r of unsolvedRows) {
         if (rowCombo.includes(r)) continue;
-        for (let c = 0; c < size; c++) {
-          if (!possibleMap[r][c]) continue;
-          const reg = regionMap[r][c];
-          if (regions.has(reg)) {
-            possibleMap[r][c] = false;
-            progressed = true;
+        for (const cell of state.candidatesAt({ type: 'row', index: r })) {
+          if (regions.has(state.regionOf(cell))) {
+            if (state.eliminate(cell)) progressed = true;
           }
         }
       }
@@ -266,14 +199,11 @@ export function trySubsets(state) {
       if (regions.size !== k) continue;
 
       let progressed = false;
-      for (let c = 0; c < size; c++) {
-        if (colCombo.includes(c)) continue;
-        for (let r = 0; r < size; r++) {
-          if (!possibleMap[r][c]) continue;
-          const reg = regionMap[r][c];
-          if (regions.has(reg)) {
-            possibleMap[r][c] = false;
-            progressed = true;
+      for (const col of unsolvedCols) {
+        if (colCombo.includes(col)) continue;
+        for (const cell of state.candidatesAt({ type: 'col', index: col })) {
+          if (regions.has(state.regionOf(cell))) {
+            if (state.eliminate(cell)) progressed = true;
           }
         }
       }
@@ -306,9 +236,10 @@ function getNeighbourKeys(cell, size) {
   return keys;
 }
 
-function forcedExclusionsForCell(cell, size, regionMap) {
+function forcedExclusionsForCell(cell, state) {
+  const size = state.n;
   const keys = new Set();
-  const regionId = regionMap[cell.r][cell.c];
+  const regionId = state.regionOf(cell);
 
   for (let i = 0; i < size; i++) {
     keys.add(`${cell.r},${i}`);
@@ -317,7 +248,7 @@ function forcedExclusionsForCell(cell, size, regionMap) {
 
   for (let r = 0; r < size; r++) {
     for (let c = 0; c < size; c++) {
-      if (regionMap[r][c] === regionId) keys.add(`${r},${c}`);
+      if (state.regionOf({ r, c }) === regionId) keys.add(`${r},${c}`);
     }
   }
 
@@ -342,7 +273,7 @@ function placementsCompatible(a, b) {
 }
 
 function applyTwinExclusion(state, pair) {
-  const { n: size, possible: possibleMap } = state;
+  const size = state.n;
   const [a, b] = pair;
 
   if (!isOrthogonallyContiguous(a, b)) return false;
@@ -358,28 +289,20 @@ function applyTwinExclusion(state, pair) {
     const c = Number(cStr);
 
     if ((r === a.r && c === a.c) || (r === b.r && c === b.c)) continue;
-    if (possibleMap[r][c]) {
-      possibleMap[r][c] = false;
-      progressed = true;
-    }
+    if (state.eliminate({ r, c })) progressed = true;
   }
 
   return progressed;
 }
 
-function applyTwoExclusion(state, pair) {
-  return applyExcludedNeighbourForCandidates(state, pair);
-}
-
 function applyExcludedNeighbourForCandidates(state, candidates) {
-  const { n: size, region: regionMap, possible: possibleMap } = state;
   if (!Array.isArray(candidates) || candidates.length < 2) return false;
 
   const blockedKeys = new Set(candidates.map((p) => `${p.r},${p.c}`));
   let sharedNeighbours = null;
 
   for (const cell of candidates) {
-    const neighbours = forcedExclusionsForCell(cell, size, regionMap);
+    const neighbours = forcedExclusionsForCell(cell, state);
     if (sharedNeighbours === null) {
       sharedNeighbours = neighbours;
       continue;
@@ -401,47 +324,29 @@ function applyExcludedNeighbourForCandidates(state, candidates) {
     const [rStr, cStr] = key.split(',');
     const r = Number(rStr);
     const c = Number(cStr);
-    if (possibleMap[r][c]) {
-      possibleMap[r][c] = false;
-      progressed = true;
-    }
+    if (state.eliminate({ r, c })) progressed = true;
   }
 
   return progressed;
 }
 
 function tryExcludedNeighbourForRegionCandidateCount(state, targetCount) {
-  const {
-    n: size,
-    regionDone: solvedRegions,
-    candidatesInRegion: regionCandidates
-  } = state;
-
-  for (let reg = 0; reg < size; reg++) {
-    if (solvedRegions[reg]) continue;
-    const cands = regionCandidates(reg);
+  for (const c of state.constraints()) {
+    if (c.type !== 'region') continue;
+    const cands = state.candidatesAt(c);
     if (cands.length !== targetCount) continue;
     if (applyExcludedNeighbourForCandidates(state, cands)) return true;
   }
-
   return false;
 }
 
 export function tryCoupledRegionPairsTwo(state) {
-  const {
-    n: size,
-    region: regionMap,
-    possible: possibleMap,
-    regionDone: solvedRegions,
-    candidatesInRegion: regionCandidates
-  } = state;
-
   const twoCandidateRegions = [];
-  for (let reg = 0; reg < size; reg++) {
-    if (solvedRegions[reg]) continue;
-    const cands = regionCandidates(reg);
+  for (const c of state.constraints()) {
+    if (c.type !== 'region') continue;
+    const cands = state.candidatesAt(c);
     if (cands.length === 2) {
-      twoCandidateRegions.push({ reg, cands });
+      twoCandidateRegions.push({ reg: c.index, cands });
     }
   }
 
@@ -461,8 +366,8 @@ export function tryCoupledRegionPairsTwo(state) {
       for (const ac of a.cands) {
         for (const bc of b.cands) {
           if (!placementsCompatible(ac, bc)) continue;
-          const exA = forcedExclusionsForCell(ac, size, regionMap);
-          const exB = forcedExclusionsForCell(bc, size, regionMap);
+          const exA = forcedExclusionsForCell(ac, state);
+          const exB = forcedExclusionsForCell(bc, state);
           const combined = new Set(exA);
           for (const key of exB) combined.add(key);
           assignmentExclusions.push(combined);
@@ -487,10 +392,7 @@ export function tryCoupledRegionPairsTwo(state) {
         const [rStr, cStr] = key.split(',');
         const r = Number(rStr);
         const c = Number(cStr);
-        if (possibleMap[r][c]) {
-          possibleMap[r][c] = false;
-          progressed = true;
-        }
+        if (state.eliminate({ r, c })) progressed = true;
       }
 
       if (progressed) {
@@ -504,37 +406,22 @@ export function tryCoupledRegionPairsTwo(state) {
 }
 
 export function tryExcludedNeighbourTwins(state) {
-  const {
-    n: size,
-    rowDone: solvedRows,
-    colDone: solvedCols,
-    regionDone: solvedRegions,
-    candidatesInRow: rowCandidates,
-    candidatesInCol: colCandidates,
-    candidatesInRegion: regionCandidates
-  } = state;
-
-  for (let r = 0; r < size; r++) {
-    if (solvedRows[r]) continue;
-    const cols = rowCandidates(r);
-    if (cols.length !== 2) continue;
-    const pair = [{ r, c: cols[0] }, { r, c: cols[1] }];
-    if (applyTwinExclusion(state, pair)) return true;
-  }
-
-  for (let c = 0; c < size; c++) {
-    if (solvedCols[c]) continue;
-    const rows = colCandidates(c);
-    if (rows.length !== 2) continue;
-    const pair = [{ r: rows[0], c }, { r: rows[1], c }];
-    if (applyTwinExclusion(state, pair)) return true;
-  }
-
-  for (let reg = 0; reg < size; reg++) {
-    if (solvedRegions[reg]) continue;
-    const cands = regionCandidates(reg);
-    if (cands.length !== 2) continue;
-    if (applyTwinExclusion(state, cands)) return true;
+  for (const c of state.constraints()) {
+    if (c.type === 'row') {
+      const cands = state.candidatesAt(c);
+      if (cands.length !== 2) continue;
+      if (applyTwinExclusion(state, cands)) return true;
+    }
+    if (c.type === 'col') {
+      const cands = state.candidatesAt(c);
+      if (cands.length !== 2) continue;
+      if (applyTwinExclusion(state, cands)) return true;
+    }
+    if (c.type === 'region') {
+      const cands = state.candidatesAt(c);
+      if (cands.length !== 2) continue;
+      if (applyTwinExclusion(state, cands)) return true;
+    }
   }
 
   return false;
@@ -557,48 +444,56 @@ export const DETERMINISTIC_TACTIC_DESCRIPTORS = [
     id: 'hidden-singles',
     label: 'Hidden Singles',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['row', 'col', 'region'],
     apply: tryHiddenSingles
   },
   {
     id: 'locked-candidates',
     label: 'Locked Candidates',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['region', 'row', 'col'],
     apply: tryLockedCandidates
   },
   {
     id: 'subsets',
     label: 'Subsets',
     regionsObserved: { min: 2, max: 4 },
+    constraintTypes: ['region', 'row', 'col'],
     apply: trySubsets
   },
   {
     id: 'excluded-neighbour-twins',
     label: 'Excluded Neighbour (Twins)',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['row', 'col', 'region'],
     apply: tryExcludedNeighbourTwins
   },
   {
     id: 'excluded-neighbour-two',
     label: 'Excluded Neighbour (Two)',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['region'],
     apply: tryExcludedNeighbourTwo
   },
   {
     id: 'excluded-neighbour-three',
     label: 'Excluded Neighbour (Three)',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['region'],
     apply: tryExcludedNeighbourThree
   },
   {
     id: 'excluded-neighbour-four',
     label: 'Excluded Neighbour (Four)',
     regionsObserved: { min: 1, max: 1 },
+    constraintTypes: ['region'],
     apply: tryExcludedNeighbourFour
   },
   {
     id: 'coupled-region-pairs-two',
     label: 'Coupled Regions (2x2)',
     regionsObserved: { min: 2, max: 2 },
+    constraintTypes: ['region'],
     apply: tryCoupledRegionPairsTwo
   }
 ];

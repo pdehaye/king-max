@@ -206,24 +206,33 @@ test('subset tactic catches line-to-region subset eliminations', async ({ page }
     const colDone = [false, false, false, false];
     const regionDone = [false, false, false, false];
 
-    function candidatesInRegion(reg) {
-      const a = [];
-      for (let r = 0; r < n; r++) {
-        for (let c = 0; c < n; c++) {
-          if (region[r][c] === reg && possible[r][c]) a.push({ r, c });
-        }
-      }
-      return a;
-    }
-
     const state = {
       n,
-      region,
-      possible,
-      rowDone,
-      colDone,
-      regionDone,
-      candidatesInRegion,
+      constraints() {
+        const result = [];
+        for (let r = 0; r < n; r++) if (!rowDone[r]) result.push({ type: 'row', index: r });
+        for (let c = 0; c < n; c++) if (!colDone[c]) result.push({ type: 'col', index: c });
+        for (let reg = 0; reg < n; reg++) if (!regionDone[reg]) result.push({ type: 'region', index: reg });
+        return result;
+      },
+      candidatesAt(constraint) {
+        const { type, index } = constraint;
+        const a = [];
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (!possible[r][c]) continue;
+            if (type === 'row' && r === index) a.push({ r, c });
+            else if (type === 'col' && c === index) a.push({ r, c });
+            else if (type === 'region' && region[r][c] === index) a.push({ r, c });
+          }
+        }
+        return a;
+      },
+      regionOf(cell) { return region[cell.r][cell.c]; },
+      eliminate(cell) {
+        if (possible[cell.r][cell.c]) { possible[cell.r][cell.c] = false; return true; }
+        return false;
+      },
       setLastObservedRegions: () => {}
     };
 
@@ -271,6 +280,73 @@ test('custom tactic weights influence difficulty scoring', async ({ page }) => {
       tunedScore: tuned.score,
       baselineTier: baseline.tier,
       tunedTier: tuned.tier
+    };
+  });
+
+  expect(result.ok, JSON.stringify(result)).toBeTruthy();
+});
+
+test('humanSolve emits a trace and Queens still solves correctly via GameInterface', async ({ page }) => {
+  await page.goto('/king-max/');
+
+  const result = await page.evaluate(async () => {
+    const solver = await import('../js/human-solver.js');
+
+    const n = 8;
+    // One queen per row (each row is its own region) — trivially solved by hidden singles
+    const region = Array.from({ length: n }, (_, r) =>
+      Array.from({ length: n }, () => r)
+    );
+
+    const out = solver.humanSolve(n, region);
+
+    const traceOk = Array.isArray(out.trace) && out.trace.length > 0;
+    const traceShapeOk = out.trace.every(
+      (s) =>
+        typeof s.tacticId === 'string' &&
+        typeof s.tier === 'number' &&
+        typeof s.observedConstraints === 'number'
+    );
+    const scoreConsistent = out.score >= 0 && Number.isFinite(out.score);
+
+    return {
+      ok: out.solved && traceOk && traceShapeOk && scoreConsistent,
+      solved: out.solved,
+      traceLength: out.trace.length,
+      traceOk,
+      traceShapeOk,
+      scoreConsistent,
+      score: out.score,
+      tier: out.tier
+    };
+  });
+
+  expect(result.ok, JSON.stringify(result)).toBeTruthy();
+});
+
+test('scoreSolveTrace returns correct score for a known trace', async ({ page }) => {
+  await page.goto('/king-max/');
+
+  const result = await page.evaluate(async () => {
+    const { scoreSolveTrace } = await import('../js/difficulty-scorer.js');
+    const { DEFAULT_DIFFICULTY_WEIGHTS } = await import('../js/difficulty-weights.js');
+
+    // Known trace: two hidden-singles steps (tier 1, observedConstraints 1, weight 1 each)
+    // plus one guess step (tier 4, weight 200)
+    const trace = [
+      { tacticId: 'hidden-singles', tier: 1, observedConstraints: 1 },
+      { tacticId: 'hidden-singles', tier: 1, observedConstraints: 1 },
+      { tacticId: 'guess', tier: 4, observedConstraints: 0 }
+    ];
+
+    const { score, maxTier, steps } = scoreSolveTrace(trace, DEFAULT_DIFFICULTY_WEIGHTS);
+
+    // hidden-singles weight at 1 region = 1 each; guess = 200; total = 202
+    return {
+      ok: score === 202 && maxTier === 4 && Array.isArray(steps) && steps.length === trace.length,
+      score,
+      maxTier,
+      stepsLength: steps.length
     };
   });
 

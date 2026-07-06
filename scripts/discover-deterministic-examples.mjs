@@ -131,6 +131,37 @@ function createDeterministicContext(n, region) {
     if (tier > maxTier) maxTier = tier;
   }
 
+  function candidatesAt(constraint) {
+    const { type, index } = constraint;
+    if (type === 'row') {
+      return candidatesInRow(index).map((c) => ({ r: index, c }));
+    }
+    if (type === 'col') {
+      return candidatesInCol(index).map((r) => ({ r, c: index }));
+    }
+    return candidatesInRegion(index);
+  }
+
+  function constraints() {
+    const result = [];
+    for (let r = 0; r < n; r++) if (!rowDone[r]) result.push({ type: 'row', index: r });
+    for (let c = 0; c < n; c++) if (!colDone[c]) result.push({ type: 'col', index: c });
+    for (let reg = 0; reg < n; reg++) if (!regionDone[reg]) result.push({ type: 'region', index: reg });
+    return result;
+  }
+
+  function eliminate(cell) {
+    if (possible[cell.r][cell.c]) {
+      possible[cell.r][cell.c] = false;
+      return true;
+    }
+    return false;
+  }
+
+  function regionOf(cell) {
+    return region[cell.r][cell.c];
+  }
+
   const ctx = {
     n,
     region,
@@ -139,6 +170,12 @@ function createDeterministicContext(n, region) {
     rowDone,
     colDone,
     regionDone,
+    candidatesAt,
+    constraints,
+    place: (cell, tier) => placeQueen(cell.r, cell.c, tier),
+    eliminate,
+    regionOf,
+    // Kept for internal use and backward compatibility
     candidatesInRow,
     candidatesInCol,
     candidatesInRegion,
