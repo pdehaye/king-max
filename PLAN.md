@@ -1,6 +1,5 @@
 # Multi-Game Logic Platform — Plan
 
-> A roadmap for evolving this repo from a single Queens puzzle into a multi-game logic platform with reasoning visualisation and intuitive deductions.
 
 ---
 
@@ -23,11 +22,11 @@ Each game in this repo teaches players *how to think* about logic puzzles:
 │                   index.html (Hub)                  │
 └──────────┬───────────────────────┬──────────────────┘
            │                       │
-    queens/index.html      nonogram/index.html  (+ future games)
+    king-max/index.html      nonogram/index.html  (+ future games)
            │                       │
     ┌──────┴───────┐        ┌──────┴───────┐
     │  GameInterface│        │  GameInterface│
-    │  (queens)     │        │  (nonogram)   │
+    │  (king-max)   │        │  (nonogram)   │
     └──────┬───────┘        └──────┬───────┘
            │                       │
     ┌──────┴───────────────────────┴──────┐
@@ -47,7 +46,7 @@ Each game in this repo teaches players *how to think* about logic puzzles:
 ```
 Epic 1: Game Interface Abstraction
   └─ Issue 1.1 GameInterface protocol
-  └─ Issue 1.2 Queens tactics → GameInterface
+  └─ Issue 1.2 King-Max tactics → GameInterface
   └─ Issue 1.3 Abstract difficulty scorer
 
 Epic 2: Reasoning Annotation System          [depends on Epic 1]
@@ -65,8 +64,8 @@ Epic 3: Second Game — Nonogram               [depends on Epic 2]
 
 Epic 4: Intuitive Deductions                 [depends on Epic 2; 4.3 on 3.4]
   └─ Issue 4.1 IntuitiveAnnotation extension
-  └─ Issue 4.2 Constraint-pressure heuristic (Queens)
-  └─ Issue 4.3 Empirical frequency lookup (Queens)
+  └─ Issue 4.2 Constraint-pressure heuristic (King-Max)
+  └─ Issue 4.3 Empirical frequency lookup (King-Max)
   └─ Issue 4.4 Block-density heuristic (Nonogram)
   └─ Issue 4.5 Intuitive hint mode UI
 
@@ -77,38 +76,6 @@ Epic 5: Multi-Game Hub                       [depends on Epics 3 + 4]
   └─ Issue 5.4 GitHub Pages workflow update
   └─ Issue 5.5 Game registry module
 ```
-
----
-
-## Sequencing for Cloud Agents
-
-Issues within each epic can largely be parallelised across agents. The critical path is:
-
-```
-1.1 → 1.2 → 1.3
-            ↓
-         2.1 → 2.2 → 2.4
-               ↓
-            2.3 ──────────→ 3.3 → 3.5 → 5.1 → 5.2
-                                              ↓
-         3.1 → 3.2 → 3.4 ──────→ 4.4        5.4
-                                  ↓
-                        4.1 → 4.2 → 4.5
-                              4.3
-```
-
-**Suggested agent assignments:**
-
-| Agent | Issues |
-|---|---|
-| Queens Logic Auditor | 1.1, 1.2, 1.3 |
-| TDD Cycle Driver | 2.1, 2.2, 4.1, 4.2 |
-| Queens Frontend Builder | 2.3, 2.4, 4.5 |
-| Queens Logic Auditor (second pass) | 3.1, 3.2, 3.4 |
-| Queens Frontend Builder (Nonogram) | 3.3, 3.5 |
-| Queens Deterministic Story Auditor | 3.2 Storybook, 5.3 |
-| Pages Release Manager | 5.4 |
-| Queens Frontend Builder (Hub) | 5.1, 5.2, 5.5 |
 
 ---
 
@@ -127,7 +94,6 @@ Each epic is documented in `.github/issues/`:
 ## Invariants to Preserve
 
 - Site remains fully static / client-side — no build step, no backend.
-- Queens game continues to work at its existing URL.
 - Existing Playwright regression tests must pass at every milestone.
 - Storybook coverage: one story per tactic per game.
 - All behaviour changes go through red-green-refactor (TDD Cycle Driver).

@@ -41,6 +41,7 @@ export function humanSolve(n, region, options = {}) {
   let maxTier = 0;
   let lastObservedRegions = null;
   const trace = [];
+  const annotations = [];
 
   function candidatesInRow(r) { const a = []; for (let c = 0; c < n; c++) if (possible[r][c]) a.push(c); return a; }
   function candidatesInCol(c) { const a = []; for (let r = 0; r < n; r++) if (possible[r][c]) a.push(r); return a; }
@@ -101,6 +102,12 @@ export function humanSolve(n, region, options = {}) {
     return region[cell.r][cell.c];
   }
 
+  let lastAnnotation = null;
+
+  function annotate(annotation) {
+    lastAnnotation = annotation;
+  }
+
   // ---
 
   const ctx = {
@@ -112,6 +119,7 @@ export function humanSolve(n, region, options = {}) {
     stateSnapshot: () => snapshot(),
     eliminate,
     regionOf,
+    annotate,
     // Kept for backward compatibility and internal use
     placeQueen,
     getScore: () => score,
@@ -128,12 +136,14 @@ export function humanSolve(n, region, options = {}) {
       changed = false;
       for (const tactic of DETERMINISTIC_TACTIC_DESCRIPTORS) {
         lastObservedRegions = null;
+        lastAnnotation = null;
         if (tactic.apply(ctx)) {
           const observedRegions = lastObservedRegions ?? tactic.regionsObserved?.min ?? 1;
           score += scoreForDeterministicStep(difficultyWeights, tactic.id, observedRegions);
           const stepTier = tierForDeterministicStep(tactic.id, observedRegions);
           if (stepTier > maxTier) maxTier = stepTier;
           trace.push({ tacticId: tactic.id, tier: stepTier, observedConstraints: observedRegions });
+          if (lastAnnotation) annotations.push(lastAnnotation);
           changed = true;
           break;
         }
@@ -181,5 +191,5 @@ export function humanSolve(n, region, options = {}) {
 
   if (!isSolved()) guessAndCheck();
 
-  return { solved: isSolved(), score, tier: maxTier, trace };
+  return { solved: isSolved(), score, tier: maxTier, trace, annotations };
 }

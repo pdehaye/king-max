@@ -352,3 +352,80 @@ test('scoreSolveTrace returns correct score for a known trace', async ({ page })
 
   expect(result.ok, JSON.stringify(result)).toBeTruthy();
 });
+
+test('makeAnnotation validates required fields and returns frozen object', async ({ page }) => {
+  await page.goto('/king-max/');
+
+  const result = await page.evaluate(async () => {
+    const { makeAnnotation } = await import('../js/reasoning-annotation.js');
+
+    // Test 1: Valid annotation
+    const valid = makeAnnotation({
+      tacticId: 'hidden-singles',
+      tacticLabel: 'Hidden Singles',
+      observed: [{ r: 0, c: 1 }, { r: 0, c: 2 }],
+      concluded: [{ r: 0, c: 3 }],
+      conclusionType: 'place',
+      explanationText: 'Row 0 has only one candidate.'
+    });
+
+    const validOk = valid.tacticId === 'hidden-singles' && valid.kind === 'deterministic' && Object.isFrozen(valid);
+
+    // Test 2: Missing required field throws
+    let missingError = false;
+    try {
+      makeAnnotation({
+        tacticId: 'hidden-singles',
+        tacticLabel: 'Hidden Singles',
+        concluded: [{ r: 0, c: 3 }],
+        conclusionType: 'place',
+        explanationText: 'Row 0 has only one candidate.'
+        // missing 'observed'
+      });
+    } catch (e) {
+      missingError = e.message.includes('observed');
+    }
+
+    // Test 3: Invalid conclusionType throws
+    let invalidTypeError = false;
+    try {
+      makeAnnotation({
+        tacticId: 'hidden-singles',
+        tacticLabel: 'Hidden Singles',
+        observed: [],
+        concluded: [{ r: 0, c: 3 }],
+        conclusionType: 'invalid',
+        explanationText: 'Row 0 has only one candidate.'
+      });
+    } catch (e) {
+      invalidTypeError = e.message.includes('conclusionType');
+    }
+
+    // Test 4: Intuitive annotation with confidence
+    const intuitive = makeAnnotation({
+      tacticId: 'constraint-pressure',
+      tacticLabel: 'Constraint Pressure',
+      observed: [{ r: 0, c: 1 }],
+      concluded: [{ r: 0, c: 2 }],
+      conclusionType: 'place',
+      explanationText: 'High constraint pressure here.',
+      kind: 'intuitive',
+      confidence: 0.85,
+      basisText: 'In 85% of similar boards, the crown goes here.'
+    });
+
+    const intuitiveOk = intuitive.kind === 'intuitive' && intuitive.confidence === 0.85 && Object.isFrozen(intuitive);
+
+    return {
+      validOk,
+      missingError,
+      invalidTypeError,
+      intuitiveOk
+    };
+  });
+
+  expect(result.validOk, 'Valid annotation should be frozen').toBeTruthy();
+  expect(result.missingError, 'Missing required field should throw').toBeTruthy();
+  expect(result.invalidTypeError, 'Invalid conclusionType should throw').toBeTruthy();
+  expect(result.intuitiveOk, 'Intuitive annotation should include confidence').toBeTruthy();
+});

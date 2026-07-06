@@ -1,3 +1,5 @@
+import { makeAnnotation } from './reasoning-annotation.js';
+
 function combinations(arr, k) {
   const res = [];
 
@@ -21,7 +23,22 @@ export function tryHiddenSingles(state) {
   for (const constraint of state.constraints()) {
     const cands = state.candidatesAt(constraint);
     if (cands.length === 1) {
-      state.place(cands[0], 1);
+      const cell = cands[0];
+      const constraintTypeLabel = { row: 'Row', col: 'Column', region: 'Region' }[constraint.type] || 'Constraint';
+      const coordDisplay = constraint.type === 'row' ? `(${constraint.index},${cell.c})` : 
+                          constraint.type === 'col' ? `(${cell.r},${constraint.index})` :
+                          `(${cell.r},${cell.c})`;
+      
+      state.annotate(makeAnnotation({
+        tacticId: 'hidden-singles',
+        tacticLabel: 'Hidden Singles',
+        observed: [cell],
+        concluded: [cell],
+        conclusionType: 'place',
+        explanationText: `${constraintTypeLabel} ${constraint.index} has only one candidate cell: ${coordDisplay}.`
+      }));
+      
+      state.place(cell, 1);
       return true;
     }
   }
@@ -30,11 +47,14 @@ export function tryHiddenSingles(state) {
 
 export function tryLockedCandidates(state) {
   let progressed = false;
+  const eliminatedCells = [];
+  const observedCells = [];
 
   for (const c of state.constraints()) {
     if (c.type !== 'region') continue;
     const cands = state.candidatesAt(c);
     if (cands.length === 0) continue;
+    observedCells.push(...cands);
 
     const rows = new Set(cands.map((p) => p.r));
     const cols = new Set(cands.map((p) => p.c));
@@ -43,7 +63,10 @@ export function tryLockedCandidates(state) {
       const r = [...rows][0];
       for (const cell of state.candidatesAt({ type: 'row', index: r })) {
         if (state.regionOf(cell) !== c.index) {
-          if (state.eliminate(cell)) progressed = true;
+          if (state.eliminate(cell)) {
+            progressed = true;
+            eliminatedCells.push(cell);
+          }
         }
       }
     }
@@ -52,7 +75,10 @@ export function tryLockedCandidates(state) {
       const col = [...cols][0];
       for (const cell of state.candidatesAt({ type: 'col', index: col })) {
         if (state.regionOf(cell) !== c.index) {
-          if (state.eliminate(cell)) progressed = true;
+          if (state.eliminate(cell)) {
+            progressed = true;
+            eliminatedCells.push(cell);
+          }
         }
       }
     }
@@ -67,7 +93,10 @@ export function tryLockedCandidates(state) {
       const reg = [...regs][0];
       for (const cell of state.candidatesAt({ type: 'region', index: reg })) {
         if (cell.r !== c.index) {
-          if (state.eliminate(cell)) progressed = true;
+          if (state.eliminate(cell)) {
+            progressed = true;
+            eliminatedCells.push(cell);
+          }
         }
       }
     }
@@ -82,10 +111,24 @@ export function tryLockedCandidates(state) {
       const reg = [...regs][0];
       for (const cell of state.candidatesAt({ type: 'region', index: reg })) {
         if (cell.c !== c.index) {
-          if (state.eliminate(cell)) progressed = true;
+          if (state.eliminate(cell)) {
+            progressed = true;
+            eliminatedCells.push(cell);
+          }
         }
       }
     }
+  }
+
+  if (progressed && eliminatedCells.length > 0) {
+    state.annotate(makeAnnotation({
+      tacticId: 'locked-candidates',
+      tacticLabel: 'Locked Candidates',
+      observed: observedCells,
+      concluded: eliminatedCells,
+      conclusionType: 'eliminate',
+      explanationText: `Candidates in region ${eliminatedCells[0] ? state.regionOf(eliminatedCells[0]) : 0} are locked to a line, eliminating other candidates.`
+    }));
   }
 
   return progressed;
