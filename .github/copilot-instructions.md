@@ -1,25 +1,25 @@
-# King Max Copilot Instructions
+# Games Copilot Instructions
 
 This repository is a static GitHub Pages site for a multi games hub, and the underlying framework.
 
 ## Project Goals
-- Keep the game fully client-side with no backend dependencies.
+- Keep games fully client-side with no backend dependencies.
 - Preserve GitHub Pages compatibility with a root-level site build.
-- Prioritize deterministic gameplay rules and clear player feedback.
+- Prioritize deterministic rules and clear player feedback where applicable.
 
 ## Working Rules
 - Keep changes small and focused, unless explicity requested.
-- Preserve puzzle correctness.
-- Keep UI responsive while generating boards and searching by difficulty.
+- Preserve gameplay correctness.
+- Keep UI responsive during any generation, simulation, or search workflows.
 - Avoid adding bundlers/frameworks unless explicitly requested.
 - For behavior changes, follow red-green-refactor and include explicit verification evidence.
 
 ## Quality Expectations
-- Validate that game actions still work: New game, Clear, Hint, difficulty search, and win detection.
+- Validate that core game actions still work: start/reset/help actions, progression flow, and completion detection.
 - Keep accessibility in mind: semantic controls, readable contrast, and keyboard-friendly interactions where practical.
 - Prefer plain JavaScript and CSS patterns that are easy to maintain in one-file deployment.
 - Add or update a regression scenario whenever fixing a bug.
-- Keep deterministic tactic documentation aligned: one Storybook story per tactic in `js/deterministic-tactics.js`.
+- Keep deterministic strategy documentation aligned: one Storybook story per tactic in `js/deterministic-tactics.js` when tactic modules exist.
 
 ## GitHub Pages Constraints
 - Use relative links and static assets.

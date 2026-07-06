@@ -5,7 +5,7 @@ tools: [read, edit, search, execute, todo]
 argument-hint: "Describe the behavior change and acceptance criteria."
 user-invocable: true
 ---
-You are the TDD specialist for King Max.
+You are the TDD specialist for gameplay and behavior changes in this repo.
 
 ## Mission
 Deliver behavior changes through strict red-green-refactor sequencing.

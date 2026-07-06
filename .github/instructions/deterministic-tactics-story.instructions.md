@@ -6,7 +6,7 @@ applyTo: "js/deterministic-tactics.js|stories/**/*.stories.js"
 
 ## Coverage Rule
 - Keep one Storybook story per deterministic tactic in `js/deterministic-tactics.js`.
-- Story names should map clearly to tactic names: hidden singles, locked candidates, subsets.
+- Story names should map clearly to tactic names.
 
 ## Maintenance Rule
 - When adding, removing, or renaming deterministic tactics, update `stories/deterministic-tactics.stories.js` in the same change.

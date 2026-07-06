@@ -1,10 +1,10 @@
 ---
-name: queens-tdd-cycle
+name: gameplay-tdd-cycle
 description: "Run a full red-green-refactor loop for gameplay changes. Use for test-first feature delivery and bug fixes in this repo."
 argument-hint: "Describe the change request or bug to fix with TDD."
 user-invocable: true
 ---
-# Queens TDD Cycle
+# Gameplay TDD Cycle
 
 Use this skill to execute a behavior change with clear TDD evidence.
 

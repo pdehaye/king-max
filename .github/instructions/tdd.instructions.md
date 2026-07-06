@@ -11,7 +11,7 @@ applyTo: "index.html"
 ## Test Strategy For This Repo
 - Prefer small pure helper functions that can be reasoned about and manually validated.
 - For UI behavior in `index.html`, write reproducible manual test steps before editing.
-- Extend the playtest checklist when adding new game mechanics.
+- Extend the playtest checklist when adding or changing mechanics.
 
 ## Minimum Evidence In Every TDD Change
 - Red: state what should fail before the fix.

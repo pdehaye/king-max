@@ -27,20 +27,20 @@ This repository includes GitHub Copilot customization primitives for faster and 
 - Hosted Storybook homepage is available at `/stories/` on the GitHub Pages site.
 
 ### Agents
-- Queens Frontend Builder
-- Queens Logic Auditor
-- Queens Deterministic Story Auditor
+- Frontend Builder
+- Logic Auditor
+- Deterministic Story Auditor
 - Pages Release Manager
 - TDD Cycle Driver
-- Queens Test Strategist
+- Test Strategist
 
 ### Skills
-- queens-feature-delivery
+- gameplay-feature-delivery
 - github-pages-release
-- queens-playtest
-- queens-tdd-cycle
-- queens-regression-guard
-- queens-deterministic-story-coverage
+- gameplay-playtest
+- gameplay-tdd-cycle
+- gameplay-regression-guard
+- deterministic-story-coverage
 
 ### Prompts
 - Start TDD Cycle

@@ -1,4 +1,4 @@
-# Queens Feature Definition Of Done
+# Gameplay Feature Definition Of Done
 
 - Feature satisfies the requested behavior.
 - Existing controls still work.

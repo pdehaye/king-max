@@ -5,7 +5,7 @@ tools: [read, edit, search, execute]
 argument-hint: "Describe the deployment issue or release update to perform."
 user-invocable: true
 ---
-You own deployment quality for the King Max Pages site.
+You own deployment quality for this GitHub Pages site.
 
 ## Scope
 - Update and validate `.github/workflows/pages.yml`.

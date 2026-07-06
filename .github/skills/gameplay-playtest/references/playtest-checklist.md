@@ -2,12 +2,12 @@
 
 ## Core Loop
 - Start a new puzzle.
-- Place dot/crown/clear across multiple cells.
-- Confirm conflicts appear for invalid crown placements.
-- Confirm auto-invalid markers update after crown placement.
+- Perform core interactions across multiple board cells.
+- Confirm invalid actions produce visible feedback.
+- Confirm automatic feedback markers update after key actions.
 
 ## Helpers
-- Use Hint and verify a valid target is highlighted.
+- Use hint/help and verify a valid target is highlighted.
 - Use Clear and confirm board resets.
 - Toggle How to play and verify panel behavior.
 

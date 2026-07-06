@@ -5,8 +5,8 @@ applyTo: "index.html"
 # Frontend Instructions
 
 ## UI Intent
-- Maintain the intentional editorial visual style already present in the page.
-- Keep controls discoverable: New game, Clear, Hint, and Target difficulty actions should remain prominent.
+- Maintain the intentional visual style already present in the page.
+- Keep core controls discoverable and easy to reach.
 - Preserve mobile usability for screens down to 360px wide.
 
 ## CSS Rules
@@ -15,6 +15,6 @@ applyTo: "index.html"
 - Avoid heavy visual effects that hurt readability or performance.
 
 ## Interaction Rules
-- Preserve the 3-state cell cycle: empty -> dot -> crown -> empty.
-- Do not remove conflict highlighting, hint pulses, or automatic invalid markers.
+- Preserve existing interaction models and state transitions.
+- Do not remove player feedback cues such as conflict/highlight/hint indicators.
 - Ensure interactive elements remain button-based or otherwise keyboard-focusable.

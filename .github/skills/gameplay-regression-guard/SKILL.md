@@ -1,10 +1,10 @@
 ---
-name: queens-regression-guard
+name: gameplay-regression-guard
 description: "Build and maintain regression checks for gameplay changes. Use when fixing bugs or shipping risky behavior updates in this repo."
 argument-hint: "Describe the bug or risky behavior and impacted flows."
 user-invocable: true
 ---
-# Queens Regression Guard
+# Gameplay Regression Guard
 
 Use this skill to make sure bug fixes and behavior changes stay fixed.
 

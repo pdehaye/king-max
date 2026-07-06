@@ -8,7 +8,7 @@
 ## Green
 - [ ] Smallest implementation change is applied.
 - [ ] Failing scenario now passes.
-- [ ] Existing core checks still pass: new game, clear, hint, difficulty search, win flow.
+- [ ] Existing core checks still pass: start/reset, primary interactions, hint/help flow, target/search flow, completion flow.
 
 ## Refactor
 - [ ] Cleanup keeps behavior unchanged.

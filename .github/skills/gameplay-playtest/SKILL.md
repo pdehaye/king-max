@@ -1,10 +1,10 @@
 ---
-name: queens-playtest
-description: "Run a structured manual playtest for the Queens game. Use for validating gameplay loops, puzzle interactions, and visible regressions before shipping."
+name: gameplay-playtest
+description: "Run a structured manual playtest for gameplay flows. Use for validating gameplay loops, puzzle interactions, and visible regressions before shipping."
 argument-hint: "Optionally include areas of concern to focus during playtest."
 user-invocable: true
 ---
-# Queens Playtest
+# Gameplay Playtest
 
 Use this skill to run a repeatable pre-release gameplay check.
 

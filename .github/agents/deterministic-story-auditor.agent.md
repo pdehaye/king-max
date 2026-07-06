@@ -1,5 +1,5 @@
 ---
-name: Queens Deterministic Story Auditor
+name: Deterministic Story Auditor
 description: "Ensure deterministic solver tactics and Storybook tactic stories stay in sync. Use for tactic coverage checks and story updates."
 tools: [read, edit, search, execute]
 argument-hint: "Describe the tactic change and expected Storybook coverage updates."
