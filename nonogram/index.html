@@ -311,9 +311,9 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
 
 <div class="wrap">
   <nav class="site-nav" aria-label="Site navigation">
-    <a href="/" class="nav-home">Games</a>
-    <a href="/king-max/">King Max</a>
-    <a href="/nonogram/" aria-current="page">Nonogram</a>
+    <a href="/games/" class="nav-home">Games</a>
+    <a href="/games/king-max/">King Max</a>
+    <a href="/games/nonogram/" aria-current="page">Nonogram</a>
   </nav>
   <header>
     <div class="eyebrow">Fill the grid</div>
@@ -455,15 +455,26 @@ function applyBoardSizing(rows, cols, rowClues, colClues) {
   const maxColClueLen = Math.max(...colClues.map((clues) => clues.length), 1);
 
   // Keep board legible while fitting common mobile widths.
-  const viewportBudget = clamp(window.innerWidth - 48, 280, 860);
+  const viewportBudget = clamp(window.innerWidth - 48, 280, 900);
   const totalBoardColumns = cols + maxRowClueLen;
   const totalBoardRows = rows + maxColClueLen;
-  const targetUnit = Math.floor(Math.min(viewportBudget / totalBoardColumns, viewportBudget / totalBoardRows));
+  const viewportFitUnit = Math.floor(
+    Math.min(viewportBudget / totalBoardColumns, viewportBudget / totalBoardRows)
+  );
 
-  const cellSize = clamp(targetUnit, 18, 44);
-  const clueSize = clamp(Math.round(cellSize * 0.85), 15, 36);
-  const clueFontSize = clamp(Math.round(clueSize * 0.42), 8, 14);
-  const clueMinWidth = clamp(Math.round(clueFontSize * 1.25), 10, 20);
+  const boardSpan = Math.max(rows, cols);
+  // Board-size-first targets so easy/medium/hard are visually distinct.
+  // 5x5 -> ~40px, 7x7 -> ~33px, 10x10 -> ~24px.
+  const boardTargetCell = clamp(Math.round(40 - (boardSpan - 5) * 3.2), 22, 40);
+  const cellSize = clamp(Math.min(boardTargetCell, viewportFitUnit), 18, 40);
+  const clueSize = clamp(Math.round(cellSize * 0.82), 14, 34);
+
+  // Keep clue text primarily tied to board size so 5/7/10 visibly differ.
+  // 5x5 -> about 12px, 7x7 -> about 10px, 10x10 -> about 7px.
+  const boardSizeBase = 12 - (boardSpan - 5) * 1.1;
+  const viewportNudge = window.innerWidth < 420 ? -1 : 0;
+  const clueFontSize = clamp(Math.round(boardSizeBase + viewportNudge), 6, 12);
+  const clueMinWidth = clamp(Math.round(clueFontSize * 1.2), 8, 16);
 
   boardEl.style.setProperty('--cell-size', `${cellSize}px`);
   boardEl.style.setProperty('--clue-size', `${clueSize}px`);
