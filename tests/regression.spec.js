@@ -429,3 +429,74 @@ test('makeAnnotation validates required fields and returns frozen object', async
   expect(result.invalidTypeError, 'Invalid conclusionType should throw').toBeTruthy();
   expect(result.intuitiveOk, 'Intuitive annotation should include confidence').toBeTruthy();
 });
+
+test('annotation renderer creates and removes overlays correctly', async ({ page }) => {
+  await page.goto('/king-max/');
+
+  const result = await page.evaluate(async () => {
+    const { renderAnnotationOverlay, clearAnnotationOverlay, isAnnotationDisplayed } 
+      = await import('../js/annotation-renderer.js');
+    const { makeAnnotation } = await import('../js/reasoning-annotation.js');
+
+    // Create a mock board element with a container
+    const boardEl = document.createElement('div');
+    boardEl.setAttribute('data-test-board', 'true');
+    document.body.appendChild(boardEl);
+
+    try {
+      // Test 1: Render overlay for a simple annotation
+      const annotation = makeAnnotation({
+        tacticId: 'test-tactic',
+        tacticLabel: 'Test Tactic',
+        observed: [{ r: 0, c: 1 }, { r: 0, c: 2 }],
+        concluded: [{ r: 0, c: 3 }],
+        conclusionType: 'place',
+        explanationText: 'Test annotation'
+      });
+
+      const clearFn = renderAnnotationOverlay(boardEl, annotation);
+      const hasContainer = boardEl.querySelector('.annotation-overlay-container') !== null;
+      const containerHasTacticId = boardEl.querySelector('[data-tactic-id="test-tactic"]') !== null;
+
+      // Test 2: Check overlay display status
+      const isDisplayed = isAnnotationDisplayed(boardEl, 'test-tactic');
+
+      // Test 3: Clear overlays
+      clearFn();
+      const hasContainerAfterClear = boardEl.querySelector('.annotation-overlay-container') !== null;
+
+      // Test 4: clearAnnotationOverlay removes all overlays
+      const annotation2 = makeAnnotation({
+        tacticId: 'another-tactic',
+        tacticLabel: 'Another Tactic',
+        observed: [{ r: 1, c: 1 }],
+        concluded: [{ r: 1, c: 2 }],
+        conclusionType: 'eliminate',
+        explanationText: 'Another test'
+      });
+
+      renderAnnotationOverlay(boardEl, annotation2);
+      const containerCount1 = boardEl.querySelectorAll('.annotation-overlay-container').length;
+      clearAnnotationOverlay(boardEl);
+      const containerCount2 = boardEl.querySelectorAll('.annotation-overlay-container').length;
+
+      return {
+        hasContainer,
+        containerHasTacticId,
+        isDisplayed,
+        hasContainerAfterClear,
+        containerCount1,
+        containerCount2
+      };
+    } finally {
+      boardEl.remove();
+    }
+  });
+
+  expect(result.hasContainer, 'Overlay container should be created').toBeTruthy();
+  expect(result.containerHasTacticId, 'Container should have tactic ID').toBeTruthy();
+  expect(result.isDisplayed, 'Annotation should be displayed').toBeTruthy();
+  expect(result.hasContainerAfterClear, 'Container should be removed after clear').toBeFalsy();
+  expect(result.containerCount1, 'Should have container after render').toBe(1);
+  expect(result.containerCount2, 'Should have no containers after clearAnnotationOverlay').toBe(0);
+});

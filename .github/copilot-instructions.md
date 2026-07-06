@@ -1,6 +1,6 @@
 # King Max Copilot Instructions
 
-This repository is a static GitHub Pages site for a Queens-style logic puzzle inspired by LinkedIn Queens.
+This repository is a static GitHub Pages site for a multi games hub.
 
 ## Project Goals
 - Keep the game fully client-side with no backend dependencies.
@@ -8,8 +8,8 @@ This repository is a static GitHub Pages site for a Queens-style logic puzzle in
 - Prioritize deterministic gameplay rules and clear player feedback.
 
 ## Working Rules
-- Keep changes small and focused when touching `index.html`.
-- Preserve puzzle correctness: exactly one crown per row, column, and region, with no touching crowns.
+- Keep changes small and focused, unless explicity requested.
+- Preserve puzzle correctness.
 - Keep UI responsive while generating boards and searching by difficulty.
 - Avoid adding bundlers/frameworks unless explicitly requested.
 - For behavior changes, follow red-green-refactor and include explicit verification evidence.
