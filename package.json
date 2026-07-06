@@ -6,6 +6,7 @@
   "scripts": {
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "examples:deterministic": "node --experimental-default-type=module scripts/discover-deterministic-examples.mjs",
     "build:site": "npm run build-storybook && rm -rf _site && mkdir -p _site _site/js _site/stories && cp index.html _site/index.html && cp styles.css _site/styles.css && cp -R js/. _site/js/ && cp -R storybook-static/. _site/stories/ && touch _site/.nojekyll",
     "serve:site": "npm run build:site && python3 -m http.server 8080 --directory _site",
     "test": "playwright test",

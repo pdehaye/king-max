@@ -29,6 +29,7 @@ This repository includes GitHub Copilot customization primitives for faster and 
 ### Agents
 - Queens Frontend Builder
 - Queens Logic Auditor
+- Queens Deterministic Story Auditor
 - Pages Release Manager
 - TDD Cycle Driver
 - Queens Test Strategist
@@ -39,9 +40,10 @@ This repository includes GitHub Copilot customization primitives for faster and 
 - queens-playtest
 - queens-tdd-cycle
 - queens-regression-guard
+- queens-deterministic-story-coverage
 
 ### Prompts
 - Start TDD Cycle
 - Design Regression Matrix
 
-Use these from Copilot Chat to run consistent workflows for feature work, TDD-driven changes, gameplay validation, and release preparation.
+Use these from Copilot Chat to run consistent workflows for feature work, TDD-driven changes, gameplay validation, deterministic tactic story coverage, and release preparation.

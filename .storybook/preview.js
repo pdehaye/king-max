@@ -2,8 +2,14 @@ import '../styles.css';
 
 const preview = {
   parameters: {
-    controls: { expanded: true },
-    layout: 'centered'
+    layout: 'fullscreen',
+    controls: { disable: true },
+    actions: { disable: true },
+    options: {
+      showPanel: false,
+      isFullscreen: true
+    },
+    viewMode: 'story'
   }
 };
 

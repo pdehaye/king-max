@@ -19,6 +19,7 @@ This repository is a static GitHub Pages site for a Queens-style logic puzzle in
 - Keep accessibility in mind: semantic controls, readable contrast, and keyboard-friendly interactions where practical.
 - Prefer plain JavaScript and CSS patterns that are easy to maintain in one-file deployment.
 - Add or update a regression scenario whenever fixing a bug.
+- Keep deterministic tactic documentation aligned: one Storybook story per tactic in `js/deterministic-tactics.js`.
 
 ## GitHub Pages Constraints
 - Use relative links and static assets.

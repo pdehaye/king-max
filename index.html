@@ -21,6 +21,15 @@
     <div class="tagline">one ruler per row, column & realm</div>
   </header>
 
+  <div class="difficulty-panel">
+    <label for="difficultyInput">Target difficulty</label>
+    <div class="difficulty-row">
+      <input type="number" id="difficultyInput" placeholder="e.g. 150" min="1">
+      <button id="findDifficultyBtn">Find</button>
+    </div>
+    <p class="difficulty-status" id="difficultyStatus"></p>
+  </div>
+
   <div class="stats">
     <div class="chip">⏱ <b id="timer">0:00</b></div>
     <div class="chip mistakes">✕ <b id="mistakes">0</b> mistakes</div>
@@ -46,14 +55,18 @@
     </button>
   </div>
 
-  <div class="difficulty-panel">
-    <label for="difficultyInput">Target difficulty</label>
-    <div class="difficulty-row">
-      <input type="number" id="difficultyInput" placeholder="e.g. 150" min="1">
-      <button id="findDifficultyBtn">Find puzzle</button>
+  <div class="tactic-panel">
+    <label for="tacticSelect">Tactics</label>
+    <div class="tactic-row">
+      <select id="tacticSelect" aria-label="Select deterministic tactic">
+        <option value="hidden-singles">Hidden Singles</option>
+        <option value="locked-candidates">Locked Candidates</option>
+        <option value="subsets">Subsets</option>
+      </select>
+      <button id="applyTacticBtn">Apply tactic</button>
+      <button id="tacticStoryBtn" class="icon-btn" aria-label="Open tactic story" title="Open tactic story in a new window">?</button>
     </div>
-    <p class="difficulty-caption">Score reflects the toughest deduction needed: pure elimination scores <b>8</b>, intersections land in the <b>teens–20s</b>, subset reasoning pushes past <b>25</b>, and anything past <b>~65</b> needs an educated guess. Every new crest is drawn from a few candidates and the hardest is kept, so most land <b>100+</b>.</p>
-    <p class="difficulty-status" id="difficultyStatus"></p>
+    <p class="tactic-status" id="tacticStatus"></p>
   </div>
 
   <div class="rules" id="rules">
@@ -66,10 +79,15 @@
     </ul>
   </div>
 
+  <aside class="why-box" aria-label="Project motivation">
+    <h2>Why?</h2>
+    <p>Hi! I am <a href="https://www.linkedin.com/in/paulolivierdehaye/" target="_blank" rel="noopener noreferrer">Paul-Olivier Dehaye</a>. This is so I can play with my kids, without the constraints associated to playing on <a href="https://www.linkedin.com/games/queens/" target="_blank" rel="noopener noreferrer">LinkedIn's Queens</a>. There are other goals, such as teaching topos theory to the masses, that will gradually emerge. This will be explained through my <a href="https://www.linkedin.com/newsletters/7128314238875373568/" target="_blank" rel="noopener noreferrer">LinkedIn newsletter</a>.</p>
+  </aside>
+
   <footer class="hint-toggle">
     <a id="rulesToggle">How to play</a>
     <span aria-hidden="true"> · </span>
-    <a href="./stories/" target="_blank" rel="noopener noreferrer">Strategy stories</a>
+    <a href="./stories/?path=/story/index.html" target="_blank" rel="noopener noreferrer">Tactical stories</a>
   </footer>
 </div>
 
@@ -87,6 +105,13 @@
 <script type="module">
 import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from './js/puzzle-logic.js';
 import { applyRegionBorders, crownSVGMarkup, regionColor } from './js/board-visuals.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './js/deterministic-tactics.js';
+
+const STORYBOOK_TACTIC_PATHS = {
+  'hidden-singles': './stories/?path=/story/strategy-deterministic-tactics--hidden-singles',
+  'locked-candidates': './stories/?path=/story/strategy-deterministic-tactics--locked-candidates',
+  subsets: './stories/?path=/story/strategy-deterministic-tactics--subsets'
+};
 
 let regionOf = [];      // n x n region ids
 let cellState = [];     // n x n : 0 empty, 1 dot, 2 crown
@@ -115,6 +140,7 @@ function applyPuzzle(cand){
 function newPuzzle(){
   applyPuzzle(generateUniquePuzzle());
   setDifficultyStatus('');
+  setTacticStatus('');
 }
 
 // Searches for a unique-solution board whose difficulty score lands within
@@ -191,7 +217,148 @@ function resetBoard(){
   seconds = 0; started = false;
   clearInterval(timerInterval);
   updateStats();
+  setTacticStatus('');
   renderBoard();
+}
+
+function setTacticStatus(text, isWarn){
+  const el = document.getElementById('tacticStatus');
+  el.textContent = text;
+  el.classList.toggle('warn', !!isWarn);
+}
+
+function getSelectedTacticDescriptor(){
+  const select = document.getElementById('tacticSelect');
+  const tacticId = select.value;
+  return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
+}
+
+function createTacticContextFromBoard(){
+  const possible = Array.from({ length: N }, () => new Array(N).fill(true));
+  const crowns = Array.from({ length: N }, () => new Array(N).fill(false));
+  const rowDone = new Array(N).fill(false);
+  const colDone = new Array(N).fill(false);
+  const regionDone = new Array(N).fill(false);
+  let score = 0;
+  let maxTier = 0;
+
+  function eliminateForQueen(r, c){
+    const reg = regionOf[r][c];
+    for(let i = 0; i < N; i++){
+      possible[r][i] = false;
+      possible[i][c] = false;
+    }
+    for(let rr = 0; rr < N; rr++) for(let cc = 0; cc < N; cc++){
+      if(regionOf[rr][cc] === reg) possible[rr][cc] = false;
+    }
+    for(let dr = -1; dr <= 1; dr++) for(let dc = -1; dc <= 1; dc++){
+      const nr = r + dr;
+      const nc = c + dc;
+      if(nr >= 0 && nr < N && nc >= 0 && nc < N) possible[nr][nc] = false;
+    }
+    rowDone[r] = true;
+    colDone[c] = true;
+    regionDone[reg] = true;
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 1) possible[r][c] = false;
+    }
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 2){
+        crowns[r][c] = true;
+      }
+    }
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(crowns[r][c]) eliminateForQueen(r, c);
+    }
+  }
+
+  function candidatesInRow(r){ const a = []; for(let c = 0; c < N; c++) if(possible[r][c]) a.push(c); return a; }
+  function candidatesInCol(c){ const a = []; for(let r = 0; r < N; r++) if(possible[r][c]) a.push(r); return a; }
+  function candidatesInRegion(reg){
+    const a = [];
+    for(let r = 0; r < N; r++) for(let c = 0; c < N; c++) if(regionOf[r][c] === reg && possible[r][c]) a.push({ r, c });
+    return a;
+  }
+
+  function placeQueen(r, c, tier){
+    if(crowns[r][c]) return;
+    crowns[r][c] = true;
+    eliminateForQueen(r, c);
+    score += (tier === 1 ? 1 : 0);
+    if(tier > maxTier) maxTier = tier;
+  }
+
+  return {
+    n: N,
+    region: regionOf,
+    possible,
+    crowns,
+    rowDone,
+    colDone,
+    regionDone,
+    candidatesInRow,
+    candidatesInCol,
+    candidatesInRegion,
+    placeQueen,
+    getScore: () => score,
+    setScore: (next) => { score = next; },
+    getMaxTier: () => maxTier,
+    setMaxTier: (next) => { maxTier = next; }
+  };
+}
+
+function applyTacticToBoard(){
+  if(solved){
+    setTacticStatus('Board already solved. Start a new game to apply tactics.', true);
+    return;
+  }
+  const tactic = getSelectedTacticDescriptor();
+  if(!tactic){
+    setTacticStatus('Pick a tactic first.', true);
+    return;
+  }
+
+  startTimerIfNeeded();
+  const ctx = createTacticContextFromBoard();
+  const progressed = tactic.apply(ctx);
+
+  if(!progressed){
+    setTacticStatus(`${tactic.label} found no deterministic move on this board state.`, true);
+    return;
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(ctx.crowns[r][c]){
+        cellState[r][c] = 2;
+      } else if(!ctx.possible[r][c]){
+        cellState[r][c] = 1;
+      } else {
+        cellState[r][c] = 0;
+      }
+    }
+  }
+
+  updateStats();
+  renderBoard();
+  checkWin();
+  setTacticStatus(`Applied ${tactic.label}.`);
+}
+
+function openTacticStory(){
+  const tactic = getSelectedTacticDescriptor();
+  if(!tactic) return;
+  const url = STORYBOOK_TACTIC_PATHS[tactic.id] || './stories/?path=/story/strategy-deterministic-tactics--direct-links';
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function updateStats(){
@@ -352,6 +519,8 @@ document.getElementById('findDifficultyBtn').addEventListener('click', onFindDif
 document.getElementById('difficultyInput').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') onFindDifficultyClick();
 });
+document.getElementById('applyTacticBtn').addEventListener('click', applyTacticToBoard);
+document.getElementById('tacticStoryBtn').addEventListener('click', openTacticStory);
 document.getElementById('rulesToggle').addEventListener('click', ()=>{
   document.getElementById('rules').classList.toggle('open');
 });

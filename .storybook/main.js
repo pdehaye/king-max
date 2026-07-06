@@ -3,6 +3,6 @@ module.exports = {
     name: '@storybook/html-vite',
     options: {}
   },
-  stories: ['../stories/**/*.mdx', '../stories/**/*.stories.@(js|mdx)'],
+  stories: ['../stories/deterministic-tactics.stories.js'],
   addons: ['@storybook/addon-essentials']
 };

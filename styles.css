@@ -160,6 +160,82 @@ h1 svg{ width:34px; height:34px; }
   margin-top:16px;
 }
 
+.tactic-panel{
+  margin-top:12px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px 12px;
+}
+
+.tactic-panel label{
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:var(--ink-soft);
+}
+
+.tactic-row{
+  display:grid;
+  grid-template-columns: 1fr auto auto;
+  gap:8px;
+  margin-top:6px;
+  align-items:center;
+}
+
+.tactic-row select{
+  min-width:0;
+  font-family:'Inter', sans-serif;
+  font-size:13px;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:8px 10px;
+  background:var(--vellum);
+  color:var(--ink);
+}
+
+.tactic-row select:focus{
+  outline:2px solid var(--teal);
+  outline-offset:1px;
+}
+
+.tactic-row #applyTacticBtn{
+  flex:none;
+  background:var(--teal);
+  color:var(--vellum);
+  border-color:var(--teal);
+  padding:8px 12px;
+  font-size:12px;
+}
+
+.tactic-row #applyTacticBtn:hover{
+  background:#264c50;
+}
+
+.icon-btn{
+  width:34px;
+  min-width:34px;
+  max-width:34px;
+  padding:0;
+  font-family:'Fraunces', serif;
+  font-size:18px;
+  line-height:1;
+  background:var(--vellum);
+}
+
+.tactic-status{
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  margin:6px 0 0;
+  min-height:13px;
+  color:var(--teal);
+}
+
+.tactic-status.warn{
+  color:var(--seal);
+}
+
 button{
   font-family:'Inter', sans-serif;
   font-size:13px;
@@ -188,11 +264,11 @@ button.primary:hover{ background:#1a1512; }
 button svg{ width:14px; height:14px; }
 
 .difficulty-panel{
-  margin-top:14px;
+  margin:10px 0 12px;
   background:var(--card);
   border:1px solid var(--line);
   border-radius:12px;
-  padding:14px 16px;
+  padding:10px 12px;
 }
 .difficulty-panel label{
   font-size:11px;
@@ -204,16 +280,16 @@ button svg{ width:14px; height:14px; }
 .difficulty-row{
   display:flex;
   gap:8px;
-  margin-top:6px;
+  margin-top:4px;
 }
 .difficulty-row input{
   flex:1;
   min-width:0;
   font-family:'JetBrains Mono', monospace;
-  font-size:14px;
+  font-size:13px;
   border:1px solid var(--line);
   border-radius:9px;
-  padding:9px 12px;
+  padding:7px 10px;
   background:var(--vellum);
   color:var(--ink);
 }
@@ -226,25 +302,19 @@ button svg{ width:14px; height:14px; }
   background:var(--teal);
   color:var(--vellum);
   border-color:var(--teal);
-  padding:9px 16px;
+  padding:7px 12px;
+  font-size:12px;
 }
 .difficulty-row button:hover{ background:#264c50; }
 .difficulty-row button:disabled{
   opacity:0.6;
   cursor:not-allowed;
 }
-.difficulty-caption{
-  font-size:12px;
-  color:var(--ink-soft);
-  line-height:1.5;
-  margin:8px 0 0;
-}
-.difficulty-caption b{ color:var(--ink); }
 .difficulty-status{
   font-family:'JetBrains Mono', monospace;
-  font-size:12px;
-  margin:8px 0 0;
-  min-height:15px;
+  font-size:11px;
+  margin:6px 0 0;
+  min-height:13px;
   color:var(--teal);
 }
 .difficulty-status.warn{ color:var(--seal); }
@@ -268,6 +338,37 @@ button svg{ width:14px; height:14px; }
 .rules b{ color:var(--ink); }
 .rules ul{ margin:8px 0 0; padding-left:18px; }
 .rules li{ margin-bottom:4px; }
+
+.why-box{
+  margin-top:12px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px 14px;
+  color:var(--ink-soft);
+}
+
+.why-box h2{
+  margin:0 0 6px;
+  font-family:'Fraunces', serif;
+  font-size:20px;
+  color:var(--ink);
+}
+
+.why-box p{
+  margin:0;
+  font-size:13px;
+  line-height:1.5;
+}
+
+.why-box a{
+  color:var(--teal);
+  font-weight:600;
+}
+
+.why-box a:hover{
+  color:#264c50;
+}
 
 .win-banner{
   position:fixed;
