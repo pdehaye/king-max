@@ -129,19 +129,21 @@ export function countSolutions(n, region, cap) {
   return count;
 }
 
-export function tryGenerateCandidate(n = 8) {
+export function tryGenerateCandidate(n = 8, options = {}) {
+  const { difficultyWeights } = options;
   const sol = generateSolution(n);
   if (!sol) return null;
   const region = growRegions(n, sol);
   if (countSolutions(n, region, 2) !== 1) return null;
-  const result = humanSolve(n, region);
+  const result = humanSolve(n, region, { difficultyWeights });
   return { sol, region, score: result.score, tier: result.tier };
 }
 
 export function generateUniquePuzzle({
   boardSize = 8,
   candidatesToSample = 4,
-  maxTotalAttempts = 1000000
+  maxTotalAttempts = 1000000,
+  difficultyWeights
 } = {}) {
   let best = null;
   let found = 0;
@@ -149,7 +151,7 @@ export function generateUniquePuzzle({
 
   while (found < candidatesToSample && totalAttempts < maxTotalAttempts) {
     totalAttempts++;
-    const cand = tryGenerateCandidate(boardSize);
+    const cand = tryGenerateCandidate(boardSize, { difficultyWeights });
     if (!cand) continue;
     found++;
     if (!best || cand.score > best.score) best = cand;
@@ -159,6 +161,6 @@ export function generateUniquePuzzle({
 
   const sol = generateSolution(boardSize);
   const region = growRegions(boardSize, sol);
-  const result = humanSolve(boardSize, region);
+  const result = humanSolve(boardSize, region, { difficultyWeights });
   return { sol, region, score: result.score, tier: result.tier };
 }

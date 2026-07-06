@@ -139,3 +139,39 @@ test('subset tactic catches line-to-region subset eliminations', async ({ page }
   expect(result.removedOutsideRowsForRegion0, JSON.stringify(result)).toBeTruthy();
   expect(result.removedOutsideRowsForRegion1, JSON.stringify(result)).toBeTruthy();
 });
+
+test('custom tactic weights influence difficulty scoring', async ({ page }) => {
+  await page.goto('/');
+
+  const result = await page.evaluate(async () => {
+    const solver = await import('./js/human-solver.js');
+    const weightMod = await import('./js/difficulty-weights.js');
+
+    const n = 8;
+    const region = Array.from({ length: n }, (_, r) =>
+      Array.from({ length: n }, () => r)
+    );
+
+    const boosted = weightMod.normalizeDifficultyWeights(weightMod.DEFAULT_DIFFICULTY_WEIGHTS);
+    for (const [tacticId, map] of Object.entries(boosted.deterministic)) {
+      for (const key of Object.keys(map)) {
+        map[key] = map[key] + 50;
+      }
+      boosted.deterministic[tacticId] = map;
+    }
+    boosted.guess += 50;
+
+    const baseline = solver.humanSolve(n, region, { difficultyWeights: weightMod.DEFAULT_DIFFICULTY_WEIGHTS });
+    const tuned = solver.humanSolve(n, region, { difficultyWeights: boosted });
+
+    return {
+      ok: tuned.score !== baseline.score,
+      baselineScore: baseline.score,
+      tunedScore: tuned.score,
+      baselineTier: baseline.tier,
+      tunedTier: tuned.tier
+    };
+  });
+
+  expect(result.ok, JSON.stringify(result)).toBeTruthy();
+});

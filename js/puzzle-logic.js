@@ -16,14 +16,15 @@ export const TIER_LABELS = {
   4: 'needs guessing'
 };
 
-export function tryGenerateCandidate(){
-  return tryGenerateCandidateFromGenerator(BOARD_SIZE);
+export function tryGenerateCandidate(options = {}){
+  return tryGenerateCandidateFromGenerator(BOARD_SIZE, options);
 }
 
-export function generateUniquePuzzle(){
+export function generateUniquePuzzle(options = {}){
   return generateUniquePuzzleFromGenerator({
     boardSize: BOARD_SIZE,
     candidatesToSample: 4,
-    maxTotalAttempts: 1000000
+    maxTotalAttempts: 1000000,
+    ...options
   });
 }

@@ -1,4 +1,9 @@
 import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './deterministic-tactics.js';
+import {
+  DEFAULT_DIFFICULTY_WEIGHTS,
+  deterministicStepWeight,
+  normalizeDifficultyWeights
+} from './difficulty-weights.js';
 
 const ONE_REGION_DIFFICULTY_ORDER = [
   'hidden-singles',
@@ -9,15 +14,14 @@ const ONE_REGION_DIFFICULTY_ORDER = [
   'excluded-neighbour-four'
 ];
 
-function scoreForDeterministicStep(tacticId, observedRegions) {
+function scoreForDeterministicStep(weights, tacticId, observedRegions) {
   if (observedRegions <= 1) {
     const idx = ONE_REGION_DIFFICULTY_ORDER.indexOf(tacticId);
-    return idx >= 0 ? idx + 1 : 9;
+    if (idx >= 0 && tacticId !== 'hidden-singles') {
+      return deterministicStepWeight(weights, tacticId, 1);
+    }
   }
-  if (observedRegions === 2) return 25;
-  if (observedRegions === 3) return 40;
-  if (observedRegions === 4) return 85;
-  return 100;
+  return deterministicStepWeight(weights, tacticId, observedRegions);
 }
 
 function tierForDeterministicStep(tacticId, observedRegions) {
@@ -26,7 +30,8 @@ function tierForDeterministicStep(tacticId, observedRegions) {
   return 3;
 }
 
-export function humanSolve(n, region) {
+export function humanSolve(n, region, options = {}) {
+  const difficultyWeights = normalizeDifficultyWeights(options.difficultyWeights || DEFAULT_DIFFICULTY_WEIGHTS);
   let possible = Array.from({ length: n }, () => new Array(n).fill(true));
   let placedCount = 0;
   let rowDone = new Array(n).fill(false);
@@ -89,7 +94,7 @@ export function humanSolve(n, region) {
         lastObservedRegions = null;
         if (tactic.apply(ctx)) {
           const observedRegions = lastObservedRegions ?? tactic.regionsObserved?.min ?? 1;
-          score += scoreForDeterministicStep(tactic.id, observedRegions);
+          score += scoreForDeterministicStep(difficultyWeights, tactic.id, observedRegions);
           const stepTier = tierForDeterministicStep(tactic.id, observedRegions);
           if (stepTier > maxTier) maxTier = stepTier;
           changed = true;
@@ -124,7 +129,7 @@ export function humanSolve(n, region) {
     }
     if (bestRow === -1 || bestCands.length === 0) return false;
     if (maxTier < 4) maxTier = 4;
-    score += 200;
+    score += difficultyWeights.guess;
     for (const c of bestCands) {
       const snap = snapshot();
       placeQueen(bestRow, c, 4);

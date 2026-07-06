@@ -58,6 +58,7 @@
   <div class="tactic-panel">
     <label>Tactics</label>
     <div id="tacticsList" class="tactics-list" aria-label="Deterministic tactic controls"></div>
+    <button id="resetWeightsBtn" class="weight-reset-btn" type="button">Reset tactic weights</button>
     <p class="tactic-status" id="tacticStatus"></p>
   </div>
 
@@ -73,7 +74,7 @@
 
   <aside class="why-box" aria-label="Project motivation">
     <h2>Why?</h2>
-    <p>Hi! I am <a href="https://www.linkedin.com/in/paulolivierdehaye/" target="_blank" rel="noopener noreferrer">Paul-Olivier Dehaye</a>. This is so I can play with my kids, without the constraints associated to playing on <a href="https://www.linkedin.com/games/queens/" target="_blank" rel="noopener noreferrer">LinkedIn's Queens</a>. There are other goals, such as teaching topos theory to the masses, that will gradually emerge. This will be explained through my <a href="https://www.linkedin.com/newsletters/7128314238875373568/" target="_blank" rel="noopener noreferrer">LinkedIn newsletter</a>.</p>
+    <p>Hi! I am <a href="https://www.linkedin.com/in/paulolivierdehaye/" target="_blank" rel="noopener noreferrer">Paul-Olivier Dehaye</a>. This is so I can play with my kids, without the constraints associated to playing on <a href="https://www.linkedin.com/games/queens/" target="_blank" rel="noopener noreferrer">LinkedIn's Queens</a>. There are other goals, that will gradually emerge. This will be explained through my <a href="https://www.linkedin.com/newsletters/7128314238875373568/" target="_blank" rel="noopener noreferrer">LinkedIn newsletter</a>.</p>
   </aside>
 
   <footer class="hint-toggle">
@@ -90,7 +91,10 @@
     </svg>
     <h2>Crest complete</h2>
     <p id="winStats">solved in 0:00 · 0 mistakes</p>
-    <button class="primary" id="playAgainBtn">Play again</button>
+    <div class="win-actions">
+      <button id="changeConfigBtn">Change Config</button>
+      <button class="primary" id="playAgainBtn">Play again</button>
+    </div>
   </div>
 </div>
 
@@ -98,6 +102,11 @@
 import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from './js/puzzle-logic.js';
 import { applyRegionBorders, crownSVGMarkup, regionColor } from './js/board-visuals.js';
 import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './js/deterministic-tactics.js';
+import {
+  DEFAULT_DIFFICULTY_WEIGHTS,
+  deterministicStepWeight,
+  normalizeDifficultyWeights
+} from './js/difficulty-weights.js';
 
 const STORYBOOK_TACTIC_QUERIES = {
   'hidden-singles': '/story/strategy-deterministic-tactics--hidden-singles',
@@ -112,6 +121,7 @@ const STORYBOOK_TACTIC_QUERIES = {
 
 const STORYBOOK_DEFAULT_QUERY = '/story/strategy-deterministic-tactics--direct-links';
 const STORYBOOK_DOCS_QUERY = '/docs/strategy-deterministic-tactics--docs';
+const DIFFICULTY_WEIGHTS_STORAGE_KEY = 'kingmax-difficulty-weights-v1';
 
 let regionOf = [];      // n x n region ids
 let cellState = [];     // n x n : 0 empty, 1 dot, 2 crown
@@ -123,6 +133,50 @@ let mistakes = 0;
 let solved = false;
 let currentDifficulty = null;
 let currentTier = null;
+let difficultyWeights = loadDifficultyWeights();
+
+function loadDifficultyWeights(){
+  try {
+    const raw = localStorage.getItem(DIFFICULTY_WEIGHTS_STORAGE_KEY);
+    if(!raw) return normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+    return normalizeDifficultyWeights(JSON.parse(raw));
+  } catch {
+    return normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+  }
+}
+
+function saveDifficultyWeights(){
+  localStorage.setItem(DIFFICULTY_WEIGHTS_STORAGE_KEY, JSON.stringify(difficultyWeights));
+}
+
+function getObservedRegionCounts(tactic){
+  const min = tactic.regionsObserved?.min ?? 1;
+  const max = tactic.regionsObserved?.max ?? min;
+  const counts = [];
+  for(let i = min; i <= max; i++) counts.push(i);
+  return counts;
+}
+
+function getDisplayedWeight(tacticId, observedRegions){
+  return deterministicStepWeight(difficultyWeights, tacticId, observedRegions);
+}
+
+function setDisplayedWeight(tacticId, observedRegions, value){
+  const next = normalizeDifficultyWeights(difficultyWeights);
+  if(!next.deterministic[tacticId]) next.deterministic[tacticId] = {};
+  next.deterministic[tacticId][String(observedRegions)] = value;
+  difficultyWeights = normalizeDifficultyWeights(next);
+  saveDifficultyWeights();
+}
+
+function refreshWeightInputs(){
+  const inputs = document.querySelectorAll('.tactic-weight-input');
+  inputs.forEach((input) => {
+    const tacticId = input.dataset.tacticId;
+    const observedRegions = Number(input.dataset.observedRegions || '1');
+    input.value = String(getDisplayedWeight(tacticId, observedRegions));
+  });
+}
 
 function getTacticById(tacticId){
   return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
@@ -160,6 +214,33 @@ function buildTacticControls(){
     applyBtn.dataset.tacticId = tactic.id;
     applyBtn.textContent = tactic.label;
 
+    const weightsWrap = document.createElement('div');
+    weightsWrap.className = 'tactic-weights';
+
+    const counts = getObservedRegionCounts(tactic);
+    counts.forEach((count) => {
+      const weightLabel = document.createElement('label');
+      weightLabel.className = 'tactic-weight';
+      weightLabel.title = `Weight for ${tactic.label} when ${count} region${count === 1 ? '' : 's'} are observed`;
+
+      const tag = document.createElement('span');
+      tag.textContent = counts.length === 1 ? 'w' : `${count}r`;
+
+      const weightInput = document.createElement('input');
+      weightInput.type = 'number';
+      weightInput.min = '0';
+      weightInput.step = '1';
+      weightInput.className = 'tactic-weight-input';
+      weightInput.dataset.tacticId = tactic.id;
+      weightInput.dataset.observedRegions = String(count);
+      weightInput.value = String(getDisplayedWeight(tactic.id, count));
+      weightInput.ariaLabel = `Weight for ${tactic.label} with ${count} observed region${count===1?'':'s'}`;
+
+      weightLabel.appendChild(tag);
+      weightLabel.appendChild(weightInput);
+      weightsWrap.appendChild(weightLabel);
+    });
+
     const assistLabel = document.createElement('label');
     assistLabel.className = 'assist-toggle';
     assistLabel.title = 'Continuously apply this tactic while you play';
@@ -185,6 +266,7 @@ function buildTacticControls(){
     storyBtn.textContent = '?';
 
     row.appendChild(applyBtn);
+    row.appendChild(weightsWrap);
     row.appendChild(assistLabel);
     row.appendChild(storyBtn);
     list.appendChild(row);
@@ -206,7 +288,7 @@ function applyPuzzle(cand){
 }
 
 function newPuzzle(){
-  applyPuzzle(generateUniquePuzzle());
+  applyPuzzle(generateUniquePuzzle({ difficultyWeights }));
   setDifficultyStatus('');
   setTacticStatus('');
 }
@@ -225,7 +307,7 @@ async function findPuzzleForDifficulty(target, tolFrac=0.10, timeBudgetMs=6000){
   while(performance.now() - t0 < timeBudgetMs){
     for(let i=0;i<250;i++){
       attempts++;
-      const cand = tryGenerateCandidate();
+      const cand = tryGenerateCandidate({ difficultyWeights });
       if(!cand) continue;
       const diff = Math.abs(cand.score - target);
       if(diff < bestDiff){ bestDiff = diff; best = cand; }
@@ -275,7 +357,7 @@ async function onFindDifficultyClick(){
     setDifficultyStatus(`Found difficulty ${cand.score} (${tierNote}) — within 10% of ${target}, ${attempts.toLocaleString()} boards tried.`);
   } else {
     const pctOff = Math.round(Math.abs(cand.score-target)/target*100);
-    setDifficultyStatus(`Closest match after ${attempts.toLocaleString()} boards: ${cand.score} (${tierNote}), ${pctOff}% off ${target}. Try a value closer to the typical 8–150 range.`, true);
+    setDifficultyStatus(`Closest match after ${attempts.toLocaleString()} boards: ${cand.score} (${tierNote}), ${pctOff}% off ${target}.`, true);
   }
 }
 
@@ -611,16 +693,24 @@ function showHint(){
       const idx = r*N + solution[r];
       const target = board.children[idx];
       target.classList.add('hint');
-      setTimeout(()=> target.classList.remove('hint'), 2300);
+      setTimeout(()=> target.classList.remove('hint'), 3600);
       return;
     }
   }
+}
+
+function openConfigFromWin(){
+  document.getElementById('winBanner').classList.remove('show');
+  const panel = document.querySelector('.difficulty-panel');
+  panel?.scrollIntoView({ behavior:'smooth', block:'center' });
+  document.getElementById('difficultyInput')?.focus();
 }
 
 document.getElementById('newGameBtn').addEventListener('click', newPuzzle);
 document.getElementById('resetBtn').addEventListener('click', resetBoard);
 document.getElementById('hintBtn').addEventListener('click', showHint);
 document.getElementById('playAgainBtn').addEventListener('click', newPuzzle);
+document.getElementById('changeConfigBtn').addEventListener('click', openConfigFromWin);
 document.getElementById('findDifficultyBtn').addEventListener('click', onFindDifficultyClick);
 document.getElementById('difficultyInput').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') onFindDifficultyClick();
@@ -639,15 +729,36 @@ document.getElementById('tacticsList').addEventListener('click', (e)=>{
 });
 
 document.getElementById('tacticsList').addEventListener('change', (e)=>{
+  if(e.target.classList.contains('tactic-weight-input')){
+    const tacticId = e.target.dataset.tacticId;
+    const observedRegions = Number(e.target.dataset.observedRegions || '1');
+    const next = parseInt(e.target.value, 10);
+    if(Number.isFinite(next) && next >= 0){
+      setDisplayedWeight(tacticId, observedRegions, next);
+      setDifficultyStatus('Difficulty weights updated. New generated boards use the new scoring.');
+    } else {
+      refreshWeightInputs();
+      setTacticStatus('Weight must be a non-negative integer.', true);
+    }
+    return;
+  }
   if(e.target.classList.contains('assist-checkbox')){
     runEnabledTacticsContinuous({statusIfNoProgress:true});
   }
+});
+
+document.getElementById('resetWeightsBtn').addEventListener('click', ()=>{
+  difficultyWeights = normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+  saveDifficultyWeights();
+  refreshWeightInputs();
+  setDifficultyStatus('Difficulty weights reset to defaults.');
 });
 document.getElementById('rulesToggle').addEventListener('click', ()=>{
   document.getElementById('rules').classList.toggle('open');
 });
 
 buildTacticControls();
+refreshWeightInputs();
 wireStorybookLinks();
 newPuzzle();
 </script>

@@ -143,10 +143,10 @@ h1 svg{ width:34px; height:34px; }
 .cell.hint::after{
   content:'';
   position:absolute;
-  inset:6%;
+  inset:4%;
   border-radius:50%;
-  box-shadow:0 0 0 3px var(--gold);
-  animation:pulseHint 1.1s ease-in-out 0s 2;
+  box-shadow:0 0 0 4px var(--gold);
+  animation:pulseHint 1.2s ease-in-out 0s 3;
   pointer-events:none;
 }
 @keyframes pulseHint{
@@ -184,9 +184,40 @@ h1 svg{ width:34px; height:34px; }
 
 .tactic-row{
   display:grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap:8px;
   align-items:center;
+}
+
+.tactic-weights{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+
+.tactic-weight{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-size:10px;
+  font-family:'JetBrains Mono', monospace;
+  color:var(--ink-soft);
+}
+
+.tactic-weight-input{
+  width:52px;
+  font-family:'JetBrains Mono', monospace;
+  font-size:11px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  padding:4px 6px;
+  background:var(--vellum);
+  color:var(--ink);
+}
+
+.tactic-weight-input:focus{
+  outline:2px solid var(--teal);
+  outline-offset:1px;
 }
 
 .tactic-apply-btn{
@@ -243,6 +274,23 @@ h1 svg{ width:34px; height:34px; }
 
 .tactic-status.warn{
   color:var(--seal);
+}
+
+.weight-reset-btn{
+  margin-top:8px;
+  width:100%;
+  font-size:11px;
+  font-family:'JetBrains Mono', monospace;
+  text-transform:uppercase;
+  letter-spacing:0.06em;
+  background:var(--vellum);
+  border-color:var(--line);
+  color:var(--ink-soft);
+  padding:7px 10px;
+}
+
+.weight-reset-btn:hover{
+  background:var(--vellum-deep);
 }
 
 button{
@@ -415,6 +463,12 @@ button svg{ width:14px; height:14px; }
   margin:0 0 20px;
   font-family:'JetBrains Mono', monospace;
 }
+
+.win-actions{
+  display:grid;
+  gap:8px;
+}
+
 .win-card button{ width:100%; }
 
 footer.hint-toggle{
@@ -432,4 +486,11 @@ footer.hint-toggle a{
 @media (max-width:380px){
   h1{ font-size:36px; }
   .cell svg.crown{ width:48%; height:48%; }
+  .tactic-row{
+    grid-template-columns: 1fr auto;
+  }
+  .tactic-weights{
+    grid-column:1 / -1;
+    flex-wrap:wrap;
+  }
 }
