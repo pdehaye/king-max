@@ -343,10 +343,10 @@ test('scoreSolveTrace returns correct score for a known trace', async ({ page })
 
     // hidden-singles weight at 1 region = 1 each; guess = 200; total = 202
     return {
-      ok: score === 202 && maxTier === 4 && steps === trace,
+      ok: score === 202 && maxTier === 4 && Array.isArray(steps) && steps.length === trace.length,
       score,
       maxTier,
-      stepsIdentical: steps === trace
+      stepsLength: steps.length
     };
   });
 

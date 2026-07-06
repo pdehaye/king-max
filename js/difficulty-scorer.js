@@ -22,6 +22,10 @@ import {
  * @param {TraceStep[]} trace   - Ordered list of steps produced during a solve.
  * @param {Object}      weights - Difficulty weights (same shape as DEFAULT_DIFFICULTY_WEIGHTS).
  * @returns {{ score: number, maxTier: number, steps: TraceStep[] }}
+ *   `score` is the accumulated difficulty score, `maxTier` is the highest
+ *   solver tier encountered, and `steps` is the same array reference that
+ *   was passed in as `trace` (returned as a convenience so callers can
+ *   destructure all results in one call).
  */
 export function scoreSolveTrace(trace, weights) {
   const w = normalizeDifficultyWeights(weights);
