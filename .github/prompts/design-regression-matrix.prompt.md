@@ -1,8 +1,8 @@
 ---
 name: Design Regression Matrix
-description: "Create a risk-based regression matrix for a feature or bug fix in the Queens game."
+description: "Create a risk-based regression matrix for a feature or bug fix in a logic game."
 argument-hint: "Describe the change and high-risk areas."
-agent: "Queens Test Strategist"
+agent: "Test Strategist"
 ---
 Create a concise regression matrix for this change.
 

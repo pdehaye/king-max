@@ -1,10 +1,10 @@
 ---
-name: queens-deterministic-story-coverage
+name: deterministic-story-coverage
 description: "Maintain one Storybook story per deterministic solver tactic. Use when tactic logic changes or story coverage drifts."
 argument-hint: "Describe deterministic tactic changes and required story updates."
 user-invocable: true
 ---
-# Queens Deterministic Story Coverage
+# Deterministic Story Coverage
 
 Use this skill to keep deterministic solver tactics and Storybook strategy stories aligned.
 

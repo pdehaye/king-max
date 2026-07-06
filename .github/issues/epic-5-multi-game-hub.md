@@ -7,12 +7,12 @@
 ## Issue 5.1 — Landing page
 
 **Labels:** `ui`
-**Depends on:** Epic 3 (Nonogram page), Epic 2 (Queens step-through)
+**Depends on:** Epic 3 (Nonogram page), Epic 2 (King Max step-through)
 
 ### Acceptance Criteria
 
-- [ ] Update root `index.html` to be a **hub/landing page** rather than the Queens game directly.
-  - Queens game moves to `queens/index.html` (keeping `index.html` → `queens/` redirect for backward compat with GitHub Pages URL).
+- [ ] Update root `index.html` to be a **hub/landing page** rather than the King Max game directly.
+  - King Max game moves to `king-max/index.html` (keeping `index.html` → `king-max/` redirect for backward compat with GitHub Pages URL).
   - Nonogram is at `nonogram/index.html`.
 - [ ] Landing page shows a card grid of available games, each with:
   - Game name and one-line description.
@@ -32,7 +32,7 @@
 ### Acceptance Criteria
 
 - [ ] Create a shared HTML fragment pattern (`_includes/nav.html`) or inline a `<nav>` in each game page that links back to the hub and to sibling games.
-- [ ] Nav shows: Home | Queens | Nonogram.
+- [ ] Nav shows: Home | King Max | Nonogram.
 - [ ] Active game is highlighted.
 - [ ] Nav is keyboard-accessible (tab order, aria-current).
 - [ ] No JavaScript required for the nav — pure HTML/CSS.
@@ -47,8 +47,8 @@
 ### Acceptance Criteria
 
 - [ ] `stories/nonogram-tactics.stories.js` exists and is discovered by Storybook config.
-- [ ] `stories/queens-intuitive.stories.js` exists covering the intuitive tactics from Epic 4.
-- [ ] Storybook sidebar groups: `Strategy / Queens / Deterministic`, `Strategy / Queens / Intuitive`, `Strategy / Nonogram`.
+- [ ] `stories/king-max-intuitive.stories.js` exists covering the intuitive tactics from Epic 4.
+- [ ] Storybook sidebar groups: `Strategy / King Max / Deterministic`, `Strategy / King Max / Intuitive`, `Strategy / Nonogram`.
 - [ ] `npm run storybook` builds without error.
 - [ ] `storybook-static/` is regenerated and committed.
 
@@ -61,9 +61,9 @@
 
 ### Acceptance Criteria
 
-- [ ] `.github/workflows/pages.yml` deploys the full site from root (hub + queens + nonogram + storybook-static).
+- [ ] `.github/workflows/pages.yml` deploys the full site from root (hub + king-max + nonogram + storybook-static).
 - [ ] All relative asset paths resolve correctly at `https://pdehaye.github.io/games/`.
-- [ ] Queens redirect from root still works.
+- [ ] King Max  redirect from root still works.
 - [ ] Nonogram at `/games/nonogram/` is reachable.
 - [ ] Storybook at `/games/stories/` is reachable (existing behaviour preserved).
 - [ ] Playwright smoke tests run in CI against the deployed URL.

@@ -6,10 +6,10 @@
 
 ## Why Nonogram?
 
-- Binary state per cell (filled / empty) — simpler than Queens.
+- Binary state per cell (filled / empty) — simpler than King Max.
 - Rich deterministic tactic vocabulary: full-line, empty-line, overlap, box-reduction, contradiction.
-- No adjacency constraints — tests that the interface is not Queens-biased.
-- Player interaction model (left-click fill, right-click cross) differs from Queens — tests UI abstraction.
+- No adjacency constraints — tests that the interface is not King Max-biased.
+- Player interaction model (left-click fill, right-click cross) differs from King Max — tests UI abstraction.
 
 ---
 

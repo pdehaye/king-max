@@ -74,6 +74,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2 4c-.6.6-1 1-1 2"/></svg>
       Realm hint
     </button>
+    <button id="stepBtn" title="Show next step in logical reasoning">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"></polyline><polyline points="9 9 12 12 9 15"></polyline><polyline points="19 9 22 12 19 15"></polyline></svg>
+      Step through
+    </button>
     <button id="shareBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5l-1.5 1.5 2.5 2.5M10 12h4a4 4 0 0 1 0 8h-4a4 4 0 0 1 0-8z"/><path d="M10 12a4 4 0 0 1 0-8h4a4 4 0 0 1 0 8"/></svg>
       Share realm
@@ -130,6 +134,7 @@ import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzl
 import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/board-visuals.js';
 import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/deterministic-tactics.js';
 import { humanSolve } from '../js/human-solver.js';
+import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
 import {
   DEFAULT_DIFFICULTY_WEIGHTS,
   deterministicStepWeight,
@@ -163,6 +168,11 @@ let started = false;
 let mistakes = 0;
 let solved = false;
 let difficultyWeights = loadDifficultyWeights();
+
+// Step-through annotation state
+let stepThroughShadowState = null;
+let stepThroughNextAnnotation = null;
+let stepThroughAnnotationClearFn = null;
 
 function createBoardState(cand = null){
   // Board state keeps regions, confirmed kings, and known absence together.
@@ -593,7 +603,10 @@ function setTacticStatus(text, isWarn){
   el.classList.toggle('warn', !!isWarn);
 }
 
-function createTacticContextFromBoardState(){
+function createTacticContextFromBoardState(state = null){
+  const _boardState = state || boardState;
+  const _regionOf = _boardState.regions;
+  const _cellState = _boardState.cells;
   const possible = Array.from({ length: N }, () => new Array(N).fill(true));
   const crowns = Array.from({ length: N }, () => new Array(N).fill(false));
   const rowDone = new Array(N).fill(false);
@@ -601,15 +614,16 @@ function createTacticContextFromBoardState(){
   const regionDone = new Array(N).fill(false);
   let score = 0;
   let maxTier = 0;
+  let lastAnnotation = null;
 
   function eliminateForQueen(r, c){
-    const reg = regionOf[r][c];
+    const reg = _regionOf[r][c];
     for(let i = 0; i < N; i++){
       possible[r][i] = false;
       possible[i][c] = false;
     }
     for(let rr = 0; rr < N; rr++) for(let cc = 0; cc < N; cc++){
-      if(regionOf[rr][cc] === reg) possible[rr][cc] = false;
+      if(_regionOf[rr][cc] === reg) possible[rr][cc] = false;
     }
     for(let dr = -1; dr <= 1; dr++) for(let dc = -1; dc <= 1; dc++){
       const nr = r + dr;
@@ -623,13 +637,13 @@ function createTacticContextFromBoardState(){
 
   for(let r = 0; r < N; r++){
     for(let c = 0; c < N; c++){
-      if(cellState[r][c] === 1) possible[r][c] = false;
+      if(_cellState[r][c] === 1) possible[r][c] = false;
     }
   }
 
   for(let r = 0; r < N; r++){
     for(let c = 0; c < N; c++){
-      if(cellState[r][c] === 2){
+      if(_cellState[r][c] === 2){
         crowns[r][c] = true;
       }
     }
@@ -687,12 +701,16 @@ function createTacticContextFromBoardState(){
   }
 
   function regionOf_fn(cell) {
-    return regionOf[cell.r][cell.c];
+    return _regionOf[cell.r][cell.c];
   }
 
-  return {
+  function annotate(annotation) {
+    lastAnnotation = annotation;
+  }
+
+  const ctx = {
     n: N,
-    region: regionOf,
+    region: _regionOf,
     possible,
     crowns,
     rowDone,
@@ -710,12 +728,21 @@ function createTacticContextFromBoardState(){
     regionOf: regionOf_fn,
     isDone: () => Object.values(crowns).flat().filter(Boolean).length === N,
     stateSnapshot: () => ({ crowns: crowns.map(row => row.slice()), possible: possible.map(row => row.slice()) }),
+    annotate,
     // Backward compat for internal getters/setters
     getScore: () => score,
     setScore: (next) => { score = next; },
     getMaxTier: () => maxTier,
     setMaxTier: (next) => { maxTier = next; }
   };
+
+  // Use getter for lastAnnotation so it captures the current value
+  Object.defineProperty(ctx, 'lastAnnotation', {
+    get: () => lastAnnotation,
+    configurable: true
+  });
+
+  return ctx;
 }
 
 function syncBoardStateFromContext(ctx){
@@ -925,6 +952,62 @@ function onCellClick(r,c){
   runEnabledTacticsContinuous();
 }
 
+function stepThroughNextAnnotation(){
+  if(solved){
+    setTacticStatus('Realm already solved.', true);
+    return;
+  }
+
+  // Create shadow state if needed
+  if(!stepThroughShadowState){
+    stepThroughShadowState = createBoardState({
+      region: boardState.regions,
+      cells: boardState.cells.map(row => row.slice()),
+      sol: boardState.solution,
+      knownKings: boardState.knownKings,
+      knownAbsence: boardState.knownAbsence
+    });
+  }
+
+  // Get enabled tactics
+  const enabled = getEnabledTacticIds();
+  if(enabled.length === 0){
+    setTacticStatus('No tactics enabled for step-through.', true);
+    return;
+  }
+
+  // Try to find next applicable tactic on shadow state
+  const shadowCtx = createTacticContextFromBoardState(stepThroughShadowState);
+  let foundAnnotation = null;
+
+  for(const tacticId of enabled){
+    const tactic = getTacticById(tacticId);
+    if(!tactic) continue;
+
+    const progressed = tactic.apply(shadowCtx);
+    if(progressed && shadowCtx.lastAnnotation){
+      foundAnnotation = shadowCtx.lastAnnotation;
+      break;
+    }
+  }
+
+  if(!foundAnnotation){
+    setTacticStatus('No deterministic steps available to show.', true);
+    stepThroughShadowState = null; // Reset for next time
+    return;
+  }
+
+  // Display annotation overlay
+  const boardEl = document.getElementById('board');
+  if(stepThroughAnnotationClearFn) stepThroughAnnotationClearFn();
+
+  stepThroughAnnotationClearFn = renderAnnotationOverlay(boardEl, foundAnnotation, {
+    durationMs: 1500
+  });
+
+  setTacticStatus(`${foundAnnotation.tacticLabel}: ${foundAnnotation.explanationText}`, false);
+}
+
 function showBoardStateHint(){
   if(solved) return;
   for(let r=0;r<N;r++){
@@ -964,6 +1047,7 @@ function initializeBoardStateFromUrl(){
 document.getElementById('newGameBtn').addEventListener('click', newBoardState);
 document.getElementById('resetBtn').addEventListener('click', resetBoardState);
 document.getElementById('hintBtn').addEventListener('click', showBoardStateHint);
+document.getElementById('stepBtn').addEventListener('click', stepThroughNextAnnotation);
 document.getElementById('shareBtn').addEventListener('click', shareBoardStateUrl);
 document.getElementById('playAgainBtn').addEventListener('click', newBoardState);
 document.getElementById('changeConfigBtn').addEventListener('click', openBoardStateConfigFromWin);

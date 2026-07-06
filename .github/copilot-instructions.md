@@ -1,6 +1,6 @@
 # King Max Copilot Instructions
 
-This repository is a static GitHub Pages site for a multi games hub.
+This repository is a static GitHub Pages site for a multi games hub, and the underlying framework.
 
 ## Project Goals
 - Keep the game fully client-side with no backend dependencies.
