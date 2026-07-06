@@ -176,41 +176,50 @@ h1 svg{ width:34px; height:34px; }
   color:var(--ink-soft);
 }
 
+.tactics-list{
+  display:grid;
+  gap:8px;
+  margin-top:6px;
+}
+
 .tactic-row{
   display:grid;
   grid-template-columns: 1fr auto auto;
   gap:8px;
-  margin-top:6px;
   align-items:center;
 }
 
-.tactic-row select{
-  min-width:0;
-  font-family:'Inter', sans-serif;
-  font-size:13px;
-  border:1px solid var(--line);
-  border-radius:9px;
-  padding:8px 10px;
-  background:var(--vellum);
-  color:var(--ink);
-}
-
-.tactic-row select:focus{
-  outline:2px solid var(--teal);
-  outline-offset:1px;
-}
-
-.tactic-row #applyTacticBtn{
+.tactic-apply-btn{
   flex:none;
   background:var(--teal);
   color:var(--vellum);
   border-color:var(--teal);
   padding:8px 12px;
   font-size:12px;
+  justify-content:flex-start;
 }
 
-.tactic-row #applyTacticBtn:hover{
+.tactic-apply-btn:hover{
   background:#264c50;
+}
+
+.assist-toggle{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  font-size:11px;
+  font-family:'JetBrains Mono', monospace;
+  color:var(--ink-soft);
+  text-transform:none;
+  letter-spacing:0;
+  cursor:pointer;
+}
+
+.assist-checkbox{
+  width:14px;
+  height:14px;
+  accent-color:var(--teal);
+  margin:0;
 }
 
 .icon-btn{

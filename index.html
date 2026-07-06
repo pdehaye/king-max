@@ -56,16 +56,8 @@
   </div>
 
   <div class="tactic-panel">
-    <label for="tacticSelect">Tactics</label>
-    <div class="tactic-row">
-      <select id="tacticSelect" aria-label="Select deterministic tactic">
-        <option value="hidden-singles">Hidden Singles</option>
-        <option value="locked-candidates">Locked Candidates</option>
-        <option value="subsets">Subsets</option>
-      </select>
-      <button id="applyTacticBtn">Apply tactic</button>
-      <button id="tacticStoryBtn" class="icon-btn" aria-label="Open tactic story" title="Open tactic story in a new window">?</button>
-    </div>
+    <label>Tactics</label>
+    <div id="tacticsList" class="tactics-list" aria-label="Deterministic tactic controls"></div>
     <p class="tactic-status" id="tacticStatus"></p>
   </div>
 
@@ -124,6 +116,55 @@ let solved = false;
 let currentDifficulty = null;
 let currentTier = null;
 
+function getTacticById(tacticId){
+  return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
+}
+
+function buildTacticControls(){
+  const list = document.getElementById('tacticsList');
+  list.innerHTML = '';
+
+  DETERMINISTIC_TACTIC_DESCRIPTORS.forEach((tactic) => {
+    const row = document.createElement('div');
+    row.className = 'tactic-row';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'tactic-apply-btn';
+    applyBtn.dataset.tacticId = tactic.id;
+    applyBtn.textContent = tactic.label;
+
+    const assistLabel = document.createElement('label');
+    assistLabel.className = 'assist-toggle';
+    assistLabel.title = 'Continuously apply this tactic while you play';
+
+    const assistCheckbox = document.createElement('input');
+    assistCheckbox.type = 'checkbox';
+    assistCheckbox.className = 'assist-checkbox';
+    assistCheckbox.dataset.tacticId = tactic.id;
+    assistCheckbox.ariaLabel = `Continuously apply ${tactic.label}`;
+
+    const assistText = document.createElement('span');
+    assistText.textContent = 'auto';
+
+    assistLabel.appendChild(assistCheckbox);
+    assistLabel.appendChild(assistText);
+
+    const storyBtn = document.createElement('button');
+    storyBtn.type = 'button';
+    storyBtn.className = 'icon-btn tactic-story-btn';
+    storyBtn.dataset.tacticId = tactic.id;
+    storyBtn.ariaLabel = `Open ${tactic.label} story`;
+    storyBtn.title = `Open ${tactic.label} story in a new window`;
+    storyBtn.textContent = '?';
+
+    row.appendChild(applyBtn);
+    row.appendChild(assistLabel);
+    row.appendChild(storyBtn);
+    list.appendChild(row);
+  });
+}
+
 function applyPuzzle(cand){
   solution = cand.sol;
   regionOf = cand.region;
@@ -135,6 +176,7 @@ function applyPuzzle(cand){
   updateStats();
   document.getElementById('winBanner').classList.remove('show');
   renderBoard();
+  runEnabledTacticsContinuous({statusIfNoProgress:false});
 }
 
 function newPuzzle(){
@@ -219,18 +261,13 @@ function resetBoard(){
   updateStats();
   setTacticStatus('');
   renderBoard();
+  runEnabledTacticsContinuous({statusIfNoProgress:false});
 }
 
 function setTacticStatus(text, isWarn){
   const el = document.getElementById('tacticStatus');
   el.textContent = text;
   el.classList.toggle('warn', !!isWarn);
-}
-
-function getSelectedTacticDescriptor(){
-  const select = document.getElementById('tacticSelect');
-  const tacticId = select.value;
-  return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
 }
 
 function createTacticContextFromBoard(){
@@ -316,26 +353,7 @@ function createTacticContextFromBoard(){
   };
 }
 
-function applyTacticToBoard(){
-  if(solved){
-    setTacticStatus('Board already solved. Start a new game to apply tactics.', true);
-    return;
-  }
-  const tactic = getSelectedTacticDescriptor();
-  if(!tactic){
-    setTacticStatus('Pick a tactic first.', true);
-    return;
-  }
-
-  startTimerIfNeeded();
-  const ctx = createTacticContextFromBoard();
-  const progressed = tactic.apply(ctx);
-
-  if(!progressed){
-    setTacticStatus(`${tactic.label} found no deterministic move on this board state.`, true);
-    return;
-  }
-
+function syncBoardFromContext(ctx){
   for(let r = 0; r < N; r++){
     for(let c = 0; c < N; c++){
       if(ctx.crowns[r][c]){
@@ -347,15 +365,75 @@ function applyTacticToBoard(){
       }
     }
   }
+}
+
+function applyTacticToBoard(tacticId, options = {}){
+  const {silentNoProgress = false} = options;
+  if(solved){
+    if(!silentNoProgress) setTacticStatus('Board already solved. Start a new game to apply tactics.', true);
+    return false;
+  }
+  const tactic = getTacticById(tacticId);
+  if(!tactic){
+    if(!silentNoProgress) setTacticStatus('Unknown tactic selection.', true);
+    return false;
+  }
+
+  const ctx = createTacticContextFromBoard();
+  const progressed = tactic.apply(ctx);
+
+  if(!progressed){
+    if(!silentNoProgress) setTacticStatus(`${tactic.label} found no deterministic move on this board state.`, true);
+    return false;
+  }
+
+  startTimerIfNeeded();
+  syncBoardFromContext(ctx);
 
   updateStats();
   renderBoard();
   checkWin();
   setTacticStatus(`Applied ${tactic.label}.`);
+  return true;
 }
 
-function openTacticStory(){
-  const tactic = getSelectedTacticDescriptor();
+function getEnabledTacticIds(){
+  const checks = document.querySelectorAll('.assist-checkbox:checked');
+  return Array.from(checks).map((el) => el.dataset.tacticId);
+}
+
+function runEnabledTacticsContinuous(options = {}){
+  const {statusIfNoProgress = false} = options;
+  if(solved) return;
+
+  const enabled = getEnabledTacticIds();
+  if(enabled.length === 0) return;
+
+  const MAX_PASSES = 24;
+  let totalApplied = 0;
+
+  for(let pass = 0; pass < MAX_PASSES; pass++){
+    let passProgressed = false;
+    for(const tacticId of enabled){
+      const progressed = applyTacticToBoard(tacticId, {silentNoProgress:true});
+      if(progressed){
+        passProgressed = true;
+        totalApplied++;
+      }
+      if(solved) break;
+    }
+    if(!passProgressed || solved) break;
+  }
+
+  if(totalApplied > 0){
+    setTacticStatus(`Auto-applied ${totalApplied} tactic step${totalApplied===1?'':'s'}.`);
+  } else if(statusIfNoProgress){
+    setTacticStatus('Enabled auto tactics found no deterministic move.', true);
+  }
+}
+
+function openTacticStory(tacticId){
+  const tactic = getTacticById(tacticId);
   if(!tactic) return;
   const url = STORYBOOK_TACTIC_PATHS[tactic.id] || './stories/?path=/story/strategy-deterministic-tactics--direct-links';
   window.open(url, '_blank', 'noopener,noreferrer');
@@ -494,6 +572,7 @@ function onCellClick(r,c){
   updateStats();
   renderBoard();
   checkWin();
+  runEnabledTacticsContinuous();
 }
 
 function showHint(){
@@ -519,12 +598,29 @@ document.getElementById('findDifficultyBtn').addEventListener('click', onFindDif
 document.getElementById('difficultyInput').addEventListener('keydown', (e)=>{
   if(e.key === 'Enter') onFindDifficultyClick();
 });
-document.getElementById('applyTacticBtn').addEventListener('click', applyTacticToBoard);
-document.getElementById('tacticStoryBtn').addEventListener('click', openTacticStory);
+document.getElementById('tacticsList').addEventListener('click', (e)=>{
+  const applyBtn = e.target.closest('.tactic-apply-btn');
+  if(applyBtn){
+    applyTacticToBoard(applyBtn.dataset.tacticId);
+    return;
+  }
+
+  const storyBtn = e.target.closest('.tactic-story-btn');
+  if(storyBtn){
+    openTacticStory(storyBtn.dataset.tacticId);
+  }
+});
+
+document.getElementById('tacticsList').addEventListener('change', (e)=>{
+  if(e.target.classList.contains('assist-checkbox')){
+    runEnabledTacticsContinuous({statusIfNoProgress:true});
+  }
+});
 document.getElementById('rulesToggle').addEventListener('click', ()=>{
   document.getElementById('rules').classList.toggle('open');
 });
 
+buildTacticControls();
 newPuzzle();
 </script>
 </body>
