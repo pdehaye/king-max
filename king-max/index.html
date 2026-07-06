@@ -657,6 +657,39 @@ function createTacticContextFromBoardState(){
     if(tier > maxTier) maxTier = tier;
   }
 
+  // --- GameInterface implementation ---
+  
+  function candidatesAt(constraint) {
+    const { type, index } = constraint;
+    if (type === 'row') {
+      return candidatesInRow(index).map((c) => ({ r: index, c }));
+    }
+    if (type === 'col') {
+      return candidatesInCol(index).map((r) => ({ r, c: index }));
+    }
+    return candidatesInRegion(index);
+  }
+
+  function constraints() {
+    const result = [];
+    for (let r = 0; r < N; r++) if (!rowDone[r]) result.push({ type: 'row', index: r });
+    for (let c = 0; c < N; c++) if (!colDone[c]) result.push({ type: 'col', index: c });
+    for (let reg = 0; reg < N; reg++) if (!regionDone[reg]) result.push({ type: 'region', index: reg });
+    return result;
+  }
+
+  function eliminate(cell) {
+    if (possible[cell.r][cell.c]) {
+      possible[cell.r][cell.c] = false;
+      return true;
+    }
+    return false;
+  }
+
+  function regionOf_fn(cell) {
+    return regionOf[cell.r][cell.c];
+  }
+
   return {
     n: N,
     region: regionOf,
@@ -669,6 +702,15 @@ function createTacticContextFromBoardState(){
     candidatesInCol,
     candidatesInRegion,
     placeQueen,
+    // GameInterface methods
+    candidatesAt,
+    constraints,
+    place: (cell, tier) => placeQueen(cell.r, cell.c, tier),
+    eliminate,
+    regionOf: regionOf_fn,
+    isDone: () => Object.values(crowns).flat().filter(Boolean).length === N,
+    stateSnapshot: () => ({ crowns: crowns.map(row => row.slice()), possible: possible.map(row => row.slice()) }),
+    // Backward compat for internal getters/setters
     getScore: () => score,
     setScore: (next) => { score = next; },
     getMaxTier: () => maxTier,
