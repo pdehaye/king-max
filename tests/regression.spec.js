@@ -144,6 +144,22 @@ test('board state is encoded in and restored from the URL', async ({ page, conte
   await restored.close();
 });
 
+test('share button copies the current encoded board URL', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
+  await page.goto('/');
+
+  const cells = page.locator('#board .cell');
+  await cells.nth(0).click();
+  await cells.nth(0).click();
+  await cells.nth(9).click();
+
+  await page.locator('#shareBtn').click();
+
+  await expect(page.locator('#shareStatus')).toContainText('Realm link copied.');
+  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toBe(page.url());
+  await expect(page.url()).toContain('board=v1.');
+});
+
 test('win banner appears after solving a board state', async ({ page }) => {
   await page.goto('/');
 

@@ -74,7 +74,12 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2 4c-.6.6-1 1-1 2"/></svg>
       Realm hint
     </button>
+    <button id="shareBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5l-1.5 1.5 2.5 2.5M10 12h4a4 4 0 0 1 0 8h-4a4 4 0 0 1 0-8z"/><path d="M10 12a4 4 0 0 1 0-8h4a4 4 0 0 1 0 8"/></svg>
+      Share realm
+    </button>
   </div>
+  <p class="share-status" id="shareStatus" aria-live="polite"></p>
 
   <div class="tactic-panel">
     <label>Realm tactics</label>
@@ -488,6 +493,52 @@ function setDifficultyStatus(text, isWarn){
   el.classList.toggle('warn', !!isWarn);
 }
 
+let shareStatusClearTimer = null;
+
+function setShareStatus(text, isWarn){
+  const el = document.getElementById('shareStatus');
+  el.textContent = text;
+  el.classList.toggle('warn', !!isWarn);
+  clearTimeout(shareStatusClearTimer);
+  if(text){
+    shareStatusClearTimer = setTimeout(() => {
+      el.textContent = '';
+      el.classList.remove('warn');
+    }, 2500);
+  }
+}
+
+async function copyTextToClipboard(text){
+  if(navigator.clipboard?.writeText){
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if(!copied){
+    throw new Error('Clipboard copy failed');
+  }
+}
+
+async function shareBoardStateUrl(){
+  updateBoardStateUrl();
+  const url = window.location.href;
+  try{
+    await copyTextToClipboard(url);
+    setShareStatus('Realm link copied.');
+  } catch {
+    setShareStatus('Could not copy the realm link.', true);
+  }
+}
+
 async function onFindDifficultyClick(){
   const input = document.getElementById('difficultyInput');
   const btn = document.getElementById('findDifficultyBtn');
@@ -871,6 +922,7 @@ function initializeBoardStateFromUrl(){
 document.getElementById('newGameBtn').addEventListener('click', newBoardState);
 document.getElementById('resetBtn').addEventListener('click', resetBoardState);
 document.getElementById('hintBtn').addEventListener('click', showBoardStateHint);
+document.getElementById('shareBtn').addEventListener('click', shareBoardStateUrl);
 document.getElementById('playAgainBtn').addEventListener('click', newBoardState);
 document.getElementById('changeConfigBtn').addEventListener('click', openBoardStateConfigFromWin);
 document.getElementById('findDifficultyBtn').addEventListener('click', onFindDifficultyClick);
