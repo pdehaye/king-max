@@ -101,18 +101,20 @@
 </head>
 <body>
   <h1>Games</h1>
-  <div class="tiles">
-    <a class="tile" href="./king-max/">
-      <span class="icon">&#x265A;</span>
-      <span class="name">King Max</span>
-      <span class="desc">Place one king per row, column, and realm. No two kings may touch.</span>
-    </a>
-    <a class="tile coming-soon" href="./nurikabe/" tabindex="-1" aria-disabled="true">
-      <span class="icon">&#x25A6;</span>
-      <span class="name">Nurikabe</span>
-      <span class="desc">Divide the grid into islands of white cells and a river of black cells.</span>
-      <span class="badge">Coming soon</span>
-    </a>
-  </div>
+  <div class="tiles" id="tileGrid"></div>
+  <script type="module">
+    import { GAMES } from './js/game-registry.js';
+    const grid = document.getElementById('tileGrid');
+    for (const game of GAMES) {
+      const a = document.createElement('a');
+      a.className = 'tile';
+      a.href = game.path;
+      a.innerHTML = `
+        <span class="icon">${game.icon}</span>
+        <span class="name">${game.label}</span>
+        <span class="desc">${game.description}</span>`;
+      grid.appendChild(a);
+    }
+  </script>
 </body>
 </html>

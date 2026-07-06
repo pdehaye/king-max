@@ -29,6 +29,44 @@ body{
   padding:32px 16px 60px;
 }
 
+/* ── Site-wide navigation ─────────────────────────────────────────────── */
+.site-nav{
+  display:flex;
+  align-items:center;
+  gap:1.25rem;
+  padding:8px 16px;
+  margin-bottom:18px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:10px;
+  font-family:'Inter', sans-serif;
+  font-size:13px;
+  font-weight:600;
+}
+
+.site-nav a{
+  color:var(--ink-soft);
+  text-decoration:none;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible{
+  color:var(--ink);
+  text-decoration:underline;
+  outline:2px solid var(--teal);
+  outline-offset:2px;
+  border-radius:2px;
+}
+
+.site-nav a[aria-current="page"]{
+  color:var(--teal);
+}
+
+.site-nav .nav-home{
+  margin-right:auto;
+  color:var(--seal);
+}
+
 .wrap{
   width:100%;
   max-width:460px;

@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nonogram</title>
+<meta name="description" content="Nonogram (Picross) logic puzzle — fill in the grid using row and column clues.">
+<meta name="theme-color" content="#2B2420">
+<link rel="stylesheet" href="../styles.css">
+<style>
+/* ── Nonogram board ─────────────────────────────────── */
+:root {
+  --cell-size: 32px;
+  --clue-size: 28px;
+}
+
+.board-frame {
+  overflow: auto;
+  margin: 0 auto 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.nonogram-board {
+  position: relative;
+  gap: 0;
+  user-select: none;
+}
+
+.nonogram-cell {
+  width: var(--cell-size);
+  height: var(--cell-size);
+  background: var(--card);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.08s;
+}
+
+.nonogram-cell:hover {
+  background: color-mix(in srgb, var(--teal) 12%, var(--card));
+}
+
+.nonogram-cell.filled {
+  background: var(--ink);
+}
+
+.nonogram-cell.empty {
+  background: var(--vellum-deep);
+}
+
+.nonogram-row-clue-group,
+.nonogram-col-clue-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 4px;
+}
+
+.nonogram-clue-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink);
+  min-width: 14px;
+  text-align: center;
+  line-height: 1;
+}
+
+.nonogram-row-clue-group.satisfied .nonogram-clue-num,
+.nonogram-col-clue-group.satisfied .nonogram-clue-num {
+  color: var(--ink-soft);
+  opacity: 0.5;
+}
+
+/* ── Controls ───────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+button:hover { background: var(--vellum-deep); }
+
+button.primary {
+  background: var(--teal);
+  color: #fff;
+  border-color: var(--teal);
+}
+
+button.primary:hover {
+  background: color-mix(in srgb, var(--teal) 85%, #000);
+}
+
+button svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── Difficulty ─────────────────────────────────────── */
+.difficulty-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.difficulty-panel label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.difficulty-panel select {
+  padding: 6px 10px;
+  border: 1.5px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ── Status / hint ──────────────────────────────────── */
+.hint-text {
+  min-height: 36px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin-bottom: 10px;
+  font-style: italic;
+  padding: 0 12px;
+}
+
+/* ── Stats ──────────────────────────────────────────── */
+.stats {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  background: var(--card);
+  font-size: 13px;
+}
+
+/* ── Win banner ─────────────────────────────────────── */
+.win-banner {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(43,36,32,0.55);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.win-banner.visible { display: flex; }
+
+.win-card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 32px 28px 24px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(43,36,32,0.18);
+  max-width: 320px;
+  width: 90vw;
+}
+
+.win-card h2 {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  margin: 10px 0 6px;
+  color: var(--ink);
+}
+
+.win-card p { color: var(--ink-soft); margin: 0 0 18px; font-size: 14px; }
+
+.win-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ── Annotation overlay container ───────────────────── */
+.annotation-overlay-container {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+/* ── Tactic panel ──────────────────────────────────── */
+.tactic-panel {
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--card);
+}
+
+.tactic-panel > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.tactics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tactic-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tactic-apply-btn {
+  flex: 1;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  text-align: left;
+  justify-content: flex-start;
+}
+
+.assist-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.assist-toggle input[type=checkbox] {
+  accent-color: var(--teal);
+  width: 13px;
+  height: 13px;
+}
+
+.tactic-status {
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-style: italic;
+  margin: 6px 0 0;
+  min-height: 18px;
+}
+
+/* ── Rules ──────────────────────────────────────────── */
+.rules {
+  font-size: 13px;
+  color: var(--ink-soft);
+  line-height: 1.6;
+  margin-top: 16px;
+  display: none;
+}
+
+.rules.open { display: block; }
+
+.hint-toggle {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 12px;
+}
+
+.hint-toggle a {
+  color: var(--teal);
+  cursor: pointer;
+  text-decoration: underline;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="site-nav" aria-label="Site navigation">
+    <a href="/" class="nav-home">Games</a>
+    <a href="/king-max/">King Max</a>
+    <a href="/nonogram/" aria-current="page">Nonogram</a>
+  </nav>
+  <header>
+    <div class="eyebrow">Fill the grid</div>
+    <h1 style="font-family:'Fraunces',serif;font-size:2rem;margin:4px 0 2px;color:var(--ink);">
+      Nonogram
+    </h1>
+    <div class="tagline" style="font-size:13px;color:var(--ink-soft);">one block per clue, row by row and column by column</div>
+  </header>
+
+  <div class="difficulty-panel">
+    <label for="difficultySelect">Difficulty</label>
+    <select id="difficultySelect">
+      <option value="easy">Easy</option>
+      <option value="medium" selected>Medium</option>
+      <option value="hard">Hard</option>
+    </select>
+  </div>
+
+  <div class="stats">
+    <div class="chip">⏱ <b id="timer">0:00</b></div>
+  </div>
+
+  <div class="board-frame">
+    <div id="board" style="position:relative;"></div>
+  </div>
+
+  <p class="hint-text" id="hintText" aria-live="polite"></p>
+
+  <div class="controls">
+    <button id="newGameBtn" class="primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+      New puzzle
+    </button>
+    <button id="clearBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+      Clear
+    </button>
+    <button id="hintBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2 4c-.6.6-1 1-1 2"/></svg>
+      Hint
+    </button>
+    <button id="stepBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
+      Step
+    </button>
+  </div>
+
+  <div class="tactic-panel">
+    <label>Tactics</label>
+    <div id="tacticsList" class="tactics-list" aria-label="Tactic controls"></div>
+    <p class="tactic-status" id="tacticStatus" aria-live="polite"></p>
+  </div>
+
+  <div class="rules" id="rules">
+    <b>How to play:</b>
+    <ul>
+      <li>Numbers above and to the left describe runs of filled cells in each row/column.</li>
+      <li><b>Left-click</b> a cell to cycle: unknown → filled → empty → unknown.</li>
+      <li><b>Right-click</b> to toggle unknown ↔ empty (cross mark).</li>
+      <li>Fill in all cells correctly to win.</li>
+    </ul>
+  </div>
+
+  <footer class="hint-toggle">
+    <a id="rulesToggle">How to play</a>
+  </footer>
+</div>
+
+<div class="win-banner" id="winBanner">
+  <div class="win-card">
+    <div style="font-size:40px;">🎉</div>
+    <h2>Puzzle solved!</h2>
+    <p id="winStats">Solved in 0:00</p>
+    <div class="win-actions">
+      <button id="playAgainBtn" class="primary">New puzzle</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { CELL_STATES, isSolved } from '../js/nonogram/puzzle-logic.js';
+import { makeNonogramInterface } from '../js/nonogram/game-interface.js';
+import { NONOGRAM_TACTIC_DESCRIPTORS } from '../js/nonogram/tactics.js';
+import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
+import { generateNonogram } from '../js/nonogram/game-generation.js';
+import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
+
+// ── State ───────────────────────────────────────────────────────────
+let rowClues = [];
+let colClues = [];
+let grid = [];
+let solution = null;
+let solved = false;
+let seconds = 0;
+let timerInterval = null;
+let started = false;
+let boardRefs = null; // { cellEls, clueRowEls, clueColEls }
+
+// Step-through state
+let stepInterface = null;
+let stepAnnotationClearFn = null;
+
+const boardEl = document.getElementById('board');
+const timerEl = document.getElementById('timer');
+const hintTextEl = document.getElementById('hintText');
+const winBanner = document.getElementById('winBanner');
+const winStatsEl = document.getElementById('winStats');
+
+// ── Timer ───────────────────────────────────────────────────────────
+function startTimer() {
+  if (started) return;
+  started = true;
+  timerInterval = setInterval(() => {
+    seconds++;
+    timerEl.textContent = formatTime(seconds);
+  }, 1000);
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  seconds = 0;
+  started = false;
+  timerEl.textContent = '0:00';
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const ss = String(s % 60).padStart(2, '0');
+  return `${m}:${ss}`;
+}
+
+// ── New game ────────────────────────────────────────────────────────
+function startNewGame() {
+  const difficulty = document.getElementById('difficultySelect').value;
+  const sizeMap = { easy: 5, medium: 7, hard: 10 };
+  const size = sizeMap[difficulty] || 5;
+
+  hintTextEl.textContent = 'Generating puzzle…';
+  solved = false;
+  winBanner.classList.remove('visible');
+  resetTimer();
+
+  // Use setTimeout so the UI can repaint first
+  setTimeout(() => {
+    const puzzle = generateNonogram(size, { difficulty });
+    if (!puzzle) {
+      hintTextEl.textContent = 'Could not generate a puzzle. Try again.';
+      return;
+    }
+
+    rowClues = puzzle.rowClues;
+    colClues = puzzle.colClues;
+    solution = puzzle.solution;
+    grid = Array.from({ length: rowClues.length }, () =>
+      new Array(colClues.length).fill(CELL_STATES.UNKNOWN)
+    );
+
+    if (stepAnnotationClearFn) { stepAnnotationClearFn(); stepAnnotationClearFn = null; }
+    stepInterface = null;
+    hintTextEl.textContent = '';
+
+    boardRefs = renderNonogramBoard(boardEl, rowClues, colClues, grid, {
+      onCellChange: handleCellChange
+    });
+  }, 10);
+}
+
+// ── Cell change handler ────────────────────────────────────────────
+function handleCellChange(r, c, newState) {
+  startTimer();
+  // Sync visual with grid
+  if (boardRefs) {
+    refreshClueHighlights(
+      boardRefs.cellEls,
+      boardRefs.clueRowEls,
+      boardRefs.clueColEls,
+      grid, rowClues, colClues
+    );
+  }
+  // Check win
+  if (isSolved(grid, rowClues, colClues)) {
+    clearInterval(timerInterval);
+    solved = true;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+    winBanner.classList.add('visible');
+    return;
+  }
+  // Run any enabled auto-tactics after each player move
+  runEnabledTacticsContinuous();
+}
+
+// ── Clear board ────────────────────────────────────────────────────
+function clearBoard() {
+  if (rowClues.length === 0) return;
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      grid[r][c] = CELL_STATES.UNKNOWN;
+    }
+  }
+  if (boardRefs) {
+    for (let r = 0; r < boardRefs.cellEls.length; r++) {
+      for (let c = 0; c < boardRefs.cellEls[r].length; c++) {
+        updateCell(boardRefs.cellEls[r][c], CELL_STATES.UNKNOWN);
+      }
+    }
+    refreshClueHighlights(
+      boardRefs.cellEls, boardRefs.clueRowEls, boardRefs.clueColEls,
+      grid, rowClues, colClues
+    );
+  }
+  if (stepAnnotationClearFn) { stepAnnotationClearFn(); stepAnnotationClearFn = null; }
+  stepInterface = null;
+  hintTextEl.textContent = '';
+  resetTimer();
+  solved = false;
+}
+
+// ── Hint ──────────────────────────────────────────────────────────
+function giveHint() {
+  if (rowClues.length === 0) return;
+  const state = makeNonogramInterface(rowClues, colClues);
+  // Sync state with current grid
+  syncInterfaceWithGrid(state);
+
+  for (const tactic of NONOGRAM_TACTIC_DESCRIPTORS) {
+    // Clone state to test
+    const testState = makeNonogramInterface(rowClues, colClues);
+    syncInterfaceWithGrid(testState);
+    const fired = tactic.fn(testState);
+    if (fired) {
+      const anns = testState.getAnnotations();
+      if (anns.length > 0) {
+        hintTextEl.textContent = `Hint [${tactic.label}]: ${anns[0].explanationText}`;
+        return;
+      }
+    }
+  }
+  hintTextEl.textContent = 'No deterministic hint available at this stage.';
+}
+
+// ── Step (annotation step-through) ───────────────────────────────
+function doStep() {
+  if (rowClues.length === 0) return;
+
+  if (!stepInterface) {
+    stepInterface = makeNonogramInterface(rowClues, colClues);
+    syncInterfaceWithGrid(stepInterface);
+  }
+
+  if (stepAnnotationClearFn) {
+    stepAnnotationClearFn();
+    stepAnnotationClearFn = null;
+  }
+
+  // Try each tactic once; apply first that fires
+  for (const tactic of NONOGRAM_TACTIC_DESCRIPTORS) {
+    const prevAnnotationCount = stepInterface.getAnnotations().length;
+    const fired = tactic.fn(stepInterface);
+    if (fired) {
+      // Apply changes to actual grid
+      const g = stepInterface.getGrid();
+      for (let r = 0; r < grid.length; r++) {
+        for (let c = 0; c < grid[r].length; c++) {
+          if (grid[r][c] === CELL_STATES.UNKNOWN && g[r][c] !== CELL_STATES.UNKNOWN) {
+            grid[r][c] = g[r][c];
+            if (boardRefs) updateCell(boardRefs.cellEls[r][c], g[r][c]);
+          }
+        }
+      }
+      if (boardRefs) {
+        refreshClueHighlights(
+          boardRefs.cellEls, boardRefs.clueRowEls, boardRefs.clueColEls,
+          grid, rowClues, colClues
+        );
+      }
+
+      const annotations = stepInterface.getAnnotations();
+      const newAnns = annotations.slice(prevAnnotationCount);
+      if (newAnns.length > 0) {
+        hintTextEl.textContent = `[${tactic.label}] ${newAnns[0].explanationText}`;
+        stepAnnotationClearFn = renderAnnotationOverlay(boardEl, newAnns[0], { durationMs: 3000 });
+      }
+
+      startTimer();
+
+      if (isSolved(grid, rowClues, colClues)) {
+        clearInterval(timerInterval);
+        solved = true;
+        winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+        winBanner.classList.add('visible');
+      }
+      return;
+    }
+  }
+
+  hintTextEl.textContent = 'No more deterministic steps available.';
+  stepInterface = null;
+}
+
+// ── Sync helper ──────────────────────────────────────────────────
+function syncInterfaceWithGrid(state) {
+  const g = state.getGrid();
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      if (grid[r][c] === CELL_STATES.FILLED) {
+        state.place({ r, c }, 1);
+      } else if (grid[r][c] === CELL_STATES.EMPTY) {
+        state.eliminate({ r, c });
+      }
+    }
+  }
+}
+
+// ── Tactic panel ────────────────────────────────────────────────
+
+function setTacticStatus(msg, isError = false) {
+  const el = document.getElementById('tacticStatus');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--seal)' : 'var(--ink-soft)';
+}
+
+function applyTacticById(tacticId, options = {}) {
+  const { silent = false } = options;
+  if (solved) {
+    if (!silent) setTacticStatus('Puzzle already solved.', true);
+    return false;
+  }
+  if (rowClues.length === 0) {
+    if (!silent) setTacticStatus('No puzzle loaded.', true);
+    return false;
+  }
+  const tactic = NONOGRAM_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId);
+  if (!tactic) return false;
+
+  // Build a fresh interface from current grid state
+  const state = makeNonogramInterface(rowClues, colClues);
+  syncInterfaceWithGrid(state);
+  const fired = tactic.fn(state);
+
+  if (!fired) {
+    if (!silent) setTacticStatus(`${tactic.label} found no move.`, true);
+    return false;
+  }
+
+  // Apply changes back to grid
+  const g = state.getGrid();
+  for (let r = 0; r < grid.length; r++) {
+    for (let c = 0; c < grid[r].length; c++) {
+      if (grid[r][c] === CELL_STATES.UNKNOWN && g[r][c] !== CELL_STATES.UNKNOWN) {
+        grid[r][c] = g[r][c];
+        if (boardRefs) updateCell(boardRefs.cellEls[r][c], g[r][c]);
+      }
+    }
+  }
+  if (boardRefs) {
+    refreshClueHighlights(
+      boardRefs.cellEls, boardRefs.clueRowEls, boardRefs.clueColEls,
+      grid, rowClues, colClues
+    );
+  }
+
+  if (!silent) setTacticStatus(`Applied: ${tactic.label}`);
+  startTimer();
+
+  if (isSolved(grid, rowClues, colClues)) {
+    clearInterval(timerInterval);
+    solved = true;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
+    winBanner.classList.add('visible');
+  }
+  return true;
+}
+
+function getEnabledTacticIds() {
+  return Array.from(document.querySelectorAll('.assist-checkbox:checked'))
+    .map((el) => el.dataset.tacticId);
+}
+
+function runEnabledTacticsContinuous(options = {}) {
+  const { statusIfNoProgress = false } = options;
+  if (solved) return;
+  const enabled = getEnabledTacticIds();
+  if (enabled.length === 0) return;
+
+  let totalApplied = 0;
+  for (let pass = 0; pass < 32; pass++) {
+    let passProgressed = false;
+    for (const tacticId of enabled) {
+      if (applyTacticById(tacticId, { silent: true })) {
+        passProgressed = true;
+        totalApplied++;
+      }
+      if (solved) break;
+    }
+    if (!passProgressed || solved) break;
+  }
+
+  if (totalApplied > 0) {
+    setTacticStatus(`Auto-applied ${totalApplied} tactic step${totalApplied === 1 ? '' : 's'}.`);
+  } else if (statusIfNoProgress) {
+    setTacticStatus('Enabled tactics found no deterministic move.', true);
+  }
+}
+
+function buildTacticControls() {
+  const list = document.getElementById('tacticsList');
+  list.innerHTML = '';
+
+  for (const tactic of NONOGRAM_TACTIC_DESCRIPTORS) {
+    const row = document.createElement('div');
+    row.className = 'tactic-row';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'tactic-apply-btn';
+    applyBtn.dataset.tacticId = tactic.id;
+    applyBtn.textContent = tactic.label;
+    applyBtn.title = `Apply ${tactic.label} once`;
+
+    const assistLabel = document.createElement('label');
+    assistLabel.className = 'assist-toggle';
+    assistLabel.title = 'Continuously apply this tactic while you play';
+
+    const assistCheckbox = document.createElement('input');
+    assistCheckbox.type = 'checkbox';
+    assistCheckbox.className = 'assist-checkbox';
+    assistCheckbox.dataset.tacticId = tactic.id;
+    assistCheckbox.setAttribute('aria-label', `Auto-apply ${tactic.label}`);
+
+    const assistText = document.createElement('span');
+    assistText.textContent = 'auto';
+
+    assistLabel.appendChild(assistCheckbox);
+    assistLabel.appendChild(assistText);
+
+    row.appendChild(applyBtn);
+    row.appendChild(assistLabel);
+    list.appendChild(row);
+  }
+
+  // Apply button clicks
+  list.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tactic-apply-btn');
+    if (btn) applyTacticById(btn.dataset.tacticId);
+  });
+
+  // Auto checkbox toggles
+  list.addEventListener('change', (e) => {
+    if (e.target.classList.contains('assist-checkbox')) {
+      runEnabledTacticsContinuous({ statusIfNoProgress: true });
+    }
+  });
+}
+
+// ── Event wiring ────────────────────────────────────────────────
+document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+document.getElementById('playAgainBtn').addEventListener('click', startNewGame);
+document.getElementById('clearBtn').addEventListener('click', clearBoard);
+document.getElementById('hintBtn').addEventListener('click', giveHint);
+document.getElementById('stepBtn').addEventListener('click', doStep);
+
+document.getElementById('rulesToggle').addEventListener('click', () => {
+  document.getElementById('rules').classList.toggle('open');
+});
+
+buildTacticControls();
+
+// Start automatically
+startNewGame();
+</script>
+</body>
+</html>

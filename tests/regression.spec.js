@@ -500,3 +500,237 @@ test('annotation renderer creates and removes overlays correctly', async ({ page
   expect(result.containerCount1, 'Should have container after render').toBe(1);
   expect(result.containerCount2, 'Should have no containers after clearAnnotationOverlay').toBe(0);
 });
+
+// ── Nonogram tests ────────────────────────────────────────────────────────────
+
+test('nonogram isSolved returns true for a correct 5×5 grid', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const result = await page.evaluate(async () => {
+    const { CELL_STATES, isSolved } = await import('../js/nonogram/puzzle-logic.js');
+    const F = CELL_STATES.FILLED;
+    const E = CELL_STATES.EMPTY;
+
+    // Simple diagonal-shift 5×5 nonogram (row total = col total = 10)
+    const solution = [
+      [F, F, E, E, E],
+      [E, F, F, E, E],
+      [E, E, F, F, E],
+      [E, E, E, F, F],
+      [F, E, E, E, F]
+    ];
+
+    const rowClues = [[2], [2], [2], [2], [1, 1]];
+    const colClues = [[1, 1], [2], [2], [2], [2]];
+
+    const solved = isSolved(solution, rowClues, colClues);
+
+    // Also check an incorrect grid is not solved
+    const wrong = solution.map((row) => row.slice());
+    wrong[0][0] = E;
+    const notSolved = !isSolved(wrong, rowClues, colClues);
+
+    return { solved, notSolved };
+  });
+
+  expect(result.solved, 'Correct grid should be solved').toBeTruthy();
+  expect(result.notSolved, 'Wrong grid should not be solved').toBeTruthy();
+});
+
+test('nonogram parseClues validates clues and throws on impossible total', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const result = await page.evaluate(async () => {
+    const { parseClues } = await import('../js/nonogram/puzzle-logic.js');
+
+    let validOk = false;
+    let mismatchError = false;
+    let overflowError = false;
+
+    try {
+      // rowClues total = 2+2+2+2+2 = 10; colClues total = 2+2+2+2+2 = 10 ✓
+      const r = parseClues([[2], [2], [2], [2], [2]], [[2], [2], [2], [2], [2]]);
+      validOk = r.rows === 5 && r.cols === 5;
+    } catch (_) {}
+
+    try {
+      parseClues([[1], [1]], [[2], [1]]);
+    } catch (e) {
+      mismatchError = e.message.includes('total');
+    }
+
+    try {
+      parseClues([[6]], [[1]]);
+    } catch (e) {
+      overflowError = e.message.includes('require at least');
+    }
+
+    return { validOk, mismatchError, overflowError };
+  });
+
+  expect(result.validOk, 'Valid clues should parse without error').toBeTruthy();
+  expect(result.mismatchError, 'Mismatched totals should throw').toBeTruthy();
+  expect(result.overflowError, 'Overflow clue should throw').toBeTruthy();
+});
+
+test('nonogram tactics fire correctly on hand-crafted examples', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const result = await page.evaluate(async () => {
+    const { CELL_STATES } = await import('../js/nonogram/puzzle-logic.js');
+    const { makeNonogramInterface } = await import('../js/nonogram/game-interface.js');
+    const { tryEmptyLine, tryFullLine, tryOverlap } = await import('../js/nonogram/tactics.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const F = CELL_STATES.FILLED;
+    const E = CELL_STATES.EMPTY;
+
+    // Empty line: row 0 has clue [0]
+    const emptyState = makeNonogramInterface([[0], [1]], [[1], [1]]);
+    const emptyFired = tryEmptyLine(emptyState);
+    const row0AllEmpty = emptyState.getGrid()[0].every((v) => v === E);
+
+    // Full line: row with clue [3] in 3 cells → all filled
+    const fullState = makeNonogramInterface([[3], [1, 1]], [[2], [2], [2]]);
+    const fullFired = tryFullLine(fullState);
+    const row0AllFilled = fullState.getGrid()[0].every((v) => v === F);
+
+    // Overlap: clue [3] in 5 cells → middle 1 cell certain
+    const overlapState = makeNonogramInterface([[3], [1], [1], [1], [1]], [[3], [1], [1], [1], [1]]);
+    const overlapFired = tryOverlap(overlapState);
+    const row0Grid = overlapState.getGrid()[0];
+    // Positions 0,1,2 have overlap if clue is [3] in 5 cells: earliest [0-2], latest [2-4], overlap = [2]
+    const overlapCellFilled = row0Grid[2] === F;
+
+    return {
+      emptyFired,
+      row0AllEmpty,
+      fullFired,
+      row0AllFilled,
+      overlapFired,
+      overlapCellFilled
+    };
+  });
+
+  expect(result.emptyFired, 'empty-line tactic should fire').toBeTruthy();
+  expect(result.row0AllEmpty, 'row 0 should all be empty after empty-line').toBeTruthy();
+  expect(result.fullFired, 'full-line tactic should fire').toBeTruthy();
+  expect(result.row0AllFilled, 'row 0 should all be filled after full-line').toBeTruthy();
+  expect(result.overlapFired, 'overlap tactic should fire').toBeTruthy();
+  expect(result.overlapCellFilled, 'overlap tactic should fill cell 2 of row 0').toBeTruthy();
+});
+
+test('nonogram generator produces solvable puzzles at each difficulty', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  const result = await page.evaluate(async () => {
+    const { generateNonogram } = await import('../js/nonogram/game-generation.js');
+    const { isSolved } = await import('../js/nonogram/puzzle-logic.js');
+
+    const results = {};
+    for (const difficulty of ['easy', 'medium', 'hard']) {
+      const puzzle = generateNonogram(5, { difficulty, maxAttempts: 300 });
+      results[difficulty] = {
+        generated: puzzle !== null,
+        hasSolution: puzzle !== null && isSolved(puzzle.solution, puzzle.rowClues, puzzle.colClues)
+      };
+    }
+    return results;
+  });
+
+  for (const difficulty of ['easy', 'medium', 'hard']) {
+    expect(result[difficulty].generated, `${difficulty}: puzzle should be generated`).toBeTruthy();
+    expect(result[difficulty].hasSolution, `${difficulty}: solution should satisfy clues`).toBeTruthy();
+  }
+});
+
+test('nonogram smoke test: new game renders board, clicking fills cells, win banner appears', async ({ page }) => {
+  await page.goto('/nonogram/');
+
+  // Board should render after automatic new game
+  const cells = page.locator('.nonogram-cell');
+  await expect(cells).not.toHaveCount(0);
+
+  // Click first unknown cell — should fill it
+  const firstCell = cells.first();
+  await firstCell.click();
+  await expect(firstCell).toHaveClass(/filled/);
+
+  // Click again — should become empty (X mark)
+  await firstCell.click();
+  await expect(firstCell).toHaveClass(/empty/);
+
+  // Click again — should return to unknown
+  await firstCell.click();
+  await expect(firstCell).not.toHaveClass(/filled/);
+  await expect(firstCell).not.toHaveClass(/empty/);
+
+  // New puzzle button should work
+  await page.getByRole('button', { name: 'New puzzle' }).first().click();
+  await expect(page.locator('.nonogram-cell')).not.toHaveCount(0);
+});
+
+// ── Hub / multi-game navigation tests ─────────────────────────────────────────
+
+test('hub landing page loads and shows both game tiles', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle(/Games/i);
+  const kingMaxLink = page.locator('a[href*="king-max"]');
+  const nonogramLink = page.locator('a[href*="nonogram"]');
+  await expect(kingMaxLink).toBeVisible();
+  await expect(nonogramLink).toBeVisible();
+  await expect(kingMaxLink).not.toHaveClass(/coming-soon/);
+  await expect(nonogramLink).not.toHaveClass(/coming-soon/);
+});
+
+test('hub game tiles link to reachable pages', async ({ page }) => {
+  await page.goto('/');
+  // Use the browser-resolved href (not the raw attribute) so relative/absolute
+  // paths both work against the local dev server.
+  const links = await page.locator('.tile').evaluateAll(
+    (els) => els.map((el) => el.href)
+  );
+  expect(links.length).toBeGreaterThanOrEqual(2);
+  for (const href of links) {
+    const response = await page.request.get(href);
+    expect(response.status(), `${href} should return 200`).toBe(200);
+  }
+});
+
+test('king-max page has site nav with Home and Nonogram links', async ({ page }) => {
+  await page.goto('/king-max/');
+  const nav = page.locator('nav.site-nav');
+  await expect(nav).toBeVisible();
+  await expect(nav.locator('a[href="/"]')).toBeVisible();
+  await expect(nav.locator('a[aria-current="page"]')).toContainText('King Max');
+  await expect(nav.locator('a[href="/nonogram/"]')).toBeVisible();
+});
+
+test('nonogram page has site nav with Home and King Max links', async ({ page }) => {
+  await page.goto('/nonogram/');
+  const nav = page.locator('nav.site-nav');
+  await expect(nav).toBeVisible();
+  await expect(nav.locator('a[href="/"]')).toBeVisible();
+  await expect(nav.locator('a[href="/king-max/"]')).toBeVisible();
+  await expect(nav.locator('a[aria-current="page"]')).toContainText('Nonogram');
+});
+
+test('game registry GAMES has king-max and nonogram with equal shape', async ({ page }) => {
+  await page.goto('/king-max/');
+  const result = await page.evaluate(async () => {
+    const { GAMES } = await import('/js/game-registry.js');
+    const required = ['id', 'label', 'path', 'description', 'icon'];
+    const errors = [];
+    for (const game of GAMES) {
+      for (const field of required) {
+        if (!game[field]) errors.push(`${game.id}: missing ${field}`);
+      }
+    }
+    const ids = GAMES.map((g) => g.id);
+    return { ids, errors, count: GAMES.length };
+  });
+  expect(result.errors).toHaveLength(0);
+  expect(result.count).toBeGreaterThanOrEqual(2);
+  expect(result.ids).toContain('king-max');
+  expect(result.ids).toContain('nonogram');
+});
