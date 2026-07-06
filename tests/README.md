@@ -3,7 +3,7 @@
 This folder contains automated no-build regression checks.
 
 ## Scope
-- Puzzle logic module invariants from `js/puzzle-logic.js`
+- Puzzle logic module invariants from `js/king-max/puzzle-logic.js`
 - Core UI smoke flow on `index.html`
 
 ## Run locally

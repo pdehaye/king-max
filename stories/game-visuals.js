@@ -1,5 +1,5 @@
-import { BOARD_SIZE } from '../js/puzzle-logic.js';
-import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/board-visuals.js';
+import { BOARD_SIZE } from '../js/king-max/puzzle-logic.js';
+import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/king-max/board-visuals.js';
 
 function defaultRegions() {
   const regions = Array.from({ length: BOARD_SIZE }, () => new Array(BOARD_SIZE).fill(0));

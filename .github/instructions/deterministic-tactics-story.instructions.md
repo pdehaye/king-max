@@ -1,11 +1,11 @@
 ---
 description: "Use when editing deterministic tactics or Storybook strategy stories for tactic teaching coverage."
-applyTo: "js/deterministic-tactics.js|stories/**/*.stories.js"
+applyTo: "js/king-max/deterministic-tactics.js|stories/**/*.stories.js"
 ---
 # Deterministic Tactics Story Instructions
 
 ## Coverage Rule
-- Keep one Storybook story per deterministic tactic in `js/deterministic-tactics.js`.
+- Keep one Storybook story per deterministic tactic in `js/king-max/deterministic-tactics.js`.
 - Story names should map clearly to tactic names.
 
 ## Maintenance Rule

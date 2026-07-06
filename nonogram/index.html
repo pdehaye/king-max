@@ -379,6 +379,8 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
 
   <footer class="hint-toggle">
     <a id="rulesToggle">How to play</a>
+    <span aria-hidden="true"> · </span>
+    <a id="tacticalStoriesLink" href="../stories/?path=/docs/nonogram-tactics--docs" target="_blank" rel="noopener noreferrer">Tactic stories</a>
   </footer>
 </div>
 
@@ -400,6 +402,17 @@ import { NONOGRAM_TACTIC_DESCRIPTORS } from '../js/nonogram/tactics.js';
 import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
 import { generateNonogram } from '../js/nonogram/game-generation.js';
 import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
+
+const STORYBOOK_TACTIC_QUERIES = {
+  'empty-line': '/story/nonogram-tactics--empty-line',
+  'full-line': '/story/nonogram-tactics--full-line',
+  overlap: '/story/nonogram-tactics--overlap',
+  'edge-fill': '/story/nonogram-tactics--edge-fill',
+  'box-reduction': '/story/nonogram-tactics--box-reduction',
+  'contradiction-empty': '/story/nonogram-tactics--contradiction-empty'
+};
+const STORYBOOK_DEFAULT_QUERY = '/docs/nonogram-tactics--docs';
+const STORYBOOK_DOCS_QUERY = '/docs/nonogram-tactics--docs';
 
 // ── State ───────────────────────────────────────────────────────────
 let rowClues = [];
@@ -448,6 +461,24 @@ function formatTime(s) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+function getStorybookBaseUrl() {
+  if (window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (window.location.port === '6006') return './';
+  if (isLocalhost) return './stories/';
+  return './stories/';
+}
+
+function storybookUrlForPath(path) {
+  return `${getStorybookBaseUrl()}?path=${path}`;
+}
+
+function wireStorybookLinks() {
+  const link = document.getElementById('tacticalStoriesLink');
+  if (!link) return;
+  link.href = storybookUrlForPath(STORYBOOK_DOCS_QUERY);
 }
 
 function applyBoardSizing(rows, cols, rowClues, colClues) {
@@ -785,11 +816,20 @@ function buildTacticControls() {
     const assistText = document.createElement('span');
     assistText.textContent = 'auto';
 
+    const storyBtn = document.createElement('button');
+    storyBtn.type = 'button';
+    storyBtn.className = 'icon-btn tactic-story-btn';
+    storyBtn.dataset.tacticId = tactic.id;
+    storyBtn.setAttribute('aria-label', `Open ${tactic.label} story`);
+    storyBtn.title = `Open ${tactic.label} story in a new window`;
+    storyBtn.textContent = '?';
+
     assistLabel.appendChild(assistCheckbox);
     assistLabel.appendChild(assistText);
 
     row.appendChild(applyBtn);
     row.appendChild(assistLabel);
+    row.appendChild(storyBtn);
     list.appendChild(row);
   }
 
@@ -797,6 +837,15 @@ function buildTacticControls() {
   list.addEventListener('click', (e) => {
     const btn = e.target.closest('.tactic-apply-btn');
     if (btn) applyTacticById(btn.dataset.tacticId);
+
+    const storyBtn = e.target.closest('.tactic-story-btn');
+    if (!storyBtn) return;
+    const query = STORYBOOK_TACTIC_QUERIES[storyBtn.dataset.tacticId] || STORYBOOK_DEFAULT_QUERY;
+    const url = storybookUrlForPath(query);
+    const popup = window.open(url, '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      setTacticStatus('Pop-up blocked. Please allow pop-ups to open tactic stories.', true);
+    }
   });
 
   // Auto checkbox toggles
@@ -825,6 +874,7 @@ window.addEventListener('resize', () => {
 });
 
 buildTacticControls();
+wireStorybookLinks();
 
 // Start automatically
 startNewGame();

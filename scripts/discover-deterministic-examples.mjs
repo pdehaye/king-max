@@ -2,8 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { tryGenerateCandidate } from '../js/game-generation.js';
-import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/deterministic-tactics.js';
+import { tryGenerateCandidate } from '../js/king-max/game-generation.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/king-max/deterministic-tactics.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

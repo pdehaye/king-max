@@ -41,7 +41,7 @@ test('puzzle logic module invariants stay valid', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('../js/puzzle-logic.js');
+    const mod = await import('../js/king-max/puzzle-logic.js');
     const n = mod.BOARD_SIZE;
 
     function isValidSolution(sol) {
@@ -185,7 +185,7 @@ test('subset tactic catches line-to-region subset eliminations', async ({ page }
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('../js/deterministic-tactics.js');
+    const mod = await import('../js/king-max/deterministic-tactics.js');
 
     const n = 4;
     const region = [
@@ -254,8 +254,8 @@ test('custom tactic weights influence difficulty scoring', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const solver = await import('../js/human-solver.js');
-    const weightMod = await import('../js/difficulty-weights.js');
+    const solver = await import('../js/king-max/human-solver.js');
+    const weightMod = await import('../js/king-max/difficulty-weights.js');
 
     const n = 8;
     const region = Array.from({ length: n }, (_, r) =>
@@ -290,7 +290,7 @@ test('humanSolve emits a trace and Queens still solves correctly via GameInterfa
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const solver = await import('../js/human-solver.js');
+    const solver = await import('../js/king-max/human-solver.js');
 
     const n = 8;
     // One queen per row (each row is its own region) — trivially solved by hidden singles
@@ -328,8 +328,8 @@ test('scoreSolveTrace returns correct score for a known trace', async ({ page })
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const { scoreSolveTrace } = await import('../js/difficulty-scorer.js');
-    const { DEFAULT_DIFFICULTY_WEIGHTS } = await import('../js/difficulty-weights.js');
+    const { scoreSolveTrace } = await import('../js/king-max/difficulty-scorer.js');
+    const { DEFAULT_DIFFICULTY_WEIGHTS } = await import('../js/king-max/difficulty-weights.js');
 
     // Known trace: two hidden-singles steps (tier 1, observedConstraints 1, weight 1 each)
     // plus one guess step (tier 4, weight 200)
@@ -701,17 +701,17 @@ test('king-max page has site nav with Home and Nonogram links', async ({ page })
   await page.goto('/king-max/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
-  await expect(nav.locator('a[href="/"]')).toBeVisible();
+  await expect(nav.locator('a[href="/games/"]')).toBeVisible();
   await expect(nav.locator('a[aria-current="page"]')).toContainText('King Max');
-  await expect(nav.locator('a[href="/nonogram/"]')).toBeVisible();
+  await expect(nav.locator('a[href="/games/nonogram/"]')).toBeVisible();
 });
 
 test('nonogram page has site nav with Home and King Max links', async ({ page }) => {
   await page.goto('/nonogram/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
-  await expect(nav.locator('a[href="/"]')).toBeVisible();
-  await expect(nav.locator('a[href="/king-max/"]')).toBeVisible();
+  await expect(nav.locator('a[href="/games/"]')).toBeVisible();
+  await expect(nav.locator('a[href="/games/king-max/"]')).toBeVisible();
   await expect(nav.locator('a[aria-current="page"]')).toContainText('Nonogram');
 });
 
