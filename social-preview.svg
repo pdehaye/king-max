@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">King Max - Logic Puzzle</title>
+  <desc id="desc">A crown logic puzzle: one crown per row, column, and region, with no touching crowns.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F3ECDB"/>
+      <stop offset="100%" stop-color="#EAE1CB"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FBF8F0"/>
+      <stop offset="100%" stop-color="#F3ECDB"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="130" cy="120" r="180" fill="#C89B3C" fill-opacity="0.15"/>
+  <circle cx="1030" cy="510" r="220" fill="#2F5D62" fill-opacity="0.14"/>
+
+  <rect x="80" y="72" width="1040" height="486" rx="28" fill="url(#panel)" stroke="#D9CFB4" stroke-width="3"/>
+
+  <g transform="translate(146 138)">
+    <rect x="0" y="0" width="400" height="336" rx="16" fill="#EFE6D3" stroke="#D9CFB4" stroke-width="2"/>
+    <g fill="#2F5D62" fill-opacity="0.18">
+      <rect x="22" y="22" width="110" height="92" rx="12"/>
+      <rect x="144" y="22" width="110" height="92" rx="12"/>
+      <rect x="266" y="22" width="110" height="92" rx="12"/>
+      <rect x="22" y="126" width="171" height="92" rx="12"/>
+      <rect x="205" y="126" width="171" height="92" rx="12"/>
+      <rect x="22" y="230" width="110" height="84" rx="12"/>
+      <rect x="144" y="230" width="232" height="84" rx="12"/>
+    </g>
+    <path d="M155 170 L165 110 L215 145 L250 90 L285 145 L335 110 L345 170 Z" fill="#C89B3C" stroke="#2B2420" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="164" y="170" width="172" height="24" rx="6" fill="#C89B3C" stroke="#2B2420" stroke-width="6"/>
+  </g>
+
+  <text x="590" y="216" fill="#A33D29" font-family="'JetBrains Mono', monospace" font-size="20" font-weight="700" letter-spacing="2.5">A CREST FOR EVERY CROWN</text>
+  <text x="590" y="296" fill="#2B2420" font-family="'Fraunces', Georgia, serif" font-size="84" font-weight="700">King Max</text>
+  <text x="590" y="350" fill="#5B5148" font-family="'Fraunces', Georgia, serif" font-size="30" font-style="italic">one ruler per row, column and realm</text>
+  <text x="590" y="418" fill="#2F5D62" font-family="'Inter', Arial, sans-serif" font-size="28" font-weight="600">Play instantly in the browser</text>
+  <text x="590" y="458" fill="#5B5148" font-family="'Inter', Arial, sans-serif" font-size="18">Deterministic tactics and adjustable difficulty.</text>
+  <text x="590" y="488" fill="#5B5148" font-family="'Inter', Arial, sans-serif" font-size="18">No app install needed.</text>
+
+  <rect x="586" y="516" width="466" height="42" rx="21" fill="#2B2420"/>
+  <text x="608" y="544" fill="#F3ECDB" font-family="'JetBrains Mono', monospace" font-size="17" font-weight="700">pdehaye.github.io/games/king-max</text>
+</svg>
