@@ -118,6 +118,32 @@ test('ui core loop smoke test', async ({ page }) => {
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(0);
 });
 
+test('board state is encoded in and restored from the URL', async ({ page, context }) => {
+  await page.goto('/');
+
+  const cells = page.locator('#board .cell');
+  const crownCell = cells.nth(0);
+  const dotCell = cells.nth(9);
+
+  await crownCell.click();
+  await crownCell.click();
+  await dotCell.click();
+
+  const encodedUrl = page.url();
+  expect(encodedUrl).toContain('board=v1.');
+
+  const restored = await context.newPage();
+  await restored.goto(encodedUrl);
+
+  const restoredCells = restored.locator('#board .cell');
+  await expect(restoredCells).toHaveCount(64);
+  await expect(restoredCells.nth(0).locator('svg.crown')).toHaveCount(1);
+  await expect(restoredCells.nth(9).locator('.dot')).toHaveCount(1);
+  await expect(restored.locator('#difficultyScore')).not.toHaveText('–');
+
+  await restored.close();
+});
+
 test('win banner appears after solving a board state', async ({ page }) => {
   await page.goto('/');
 
