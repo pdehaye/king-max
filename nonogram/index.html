@@ -443,19 +443,57 @@ const BOARD_STATE_QUERY_KEY = 'board';
 const NONOGRAM_DIFFICULTY_WEIGHTS_STORAGE_KEY = 'nonogram-difficulty-weights-v1';
 
 // ── State ───────────────────────────────────────────────────────────
-let rowClues = [];
-let colClues = [];
-let grid = [];
-let solution = null;
+let boardState = createBoardState();
+let rowClues = boardState.rowClues;
+let colClues = boardState.colClues;
+let grid = boardState.grid;
+let solution = boardState.solution;
 let solved = false;
 let seconds = 0;
 let timerInterval = null;
 let started = false;
-let mistakes = 0;
-let currentDifficultyScore = null;
-let currentDifficultyTier = null;
+let mistakes = boardState.mistakes;
+let currentDifficultyScore = boardState.difficultyScore;
+let currentDifficultyTier = boardState.difficultyTier;
 let difficultyWeights = loadDifficultyWeights();
 let boardRefs = null; // { cellEls, clueRowEls, clueColEls }
+
+function clone2DGrid(gridToClone) {
+  return Array.isArray(gridToClone) ? gridToClone.map((row) => row.slice()) : [];
+}
+
+function createBoardState(snapshot = null) {
+  return {
+    rowClues: Array.isArray(snapshot?.rowClues) ? snapshot.rowClues.map((clues) => clues.slice()) : [],
+    colClues: Array.isArray(snapshot?.colClues) ? snapshot.colClues.map((clues) => clues.slice()) : [],
+    solution: clone2DGrid(snapshot?.solution),
+    grid: clone2DGrid(snapshot?.grid),
+    mistakes: Number.isInteger(snapshot?.mistakes) && snapshot.mistakes >= 0 ? snapshot.mistakes : 0,
+    difficultyScore: Number.isFinite(snapshot?.difficultyScore) ? snapshot.difficultyScore : null,
+    difficultyTier: Number.isInteger(snapshot?.difficultyTier) && snapshot.difficultyTier >= 1
+      ? snapshot.difficultyTier
+      : null
+  };
+}
+
+function syncBoardStateRefs() {
+  rowClues = boardState.rowClues;
+  colClues = boardState.colClues;
+  solution = boardState.solution;
+  grid = boardState.grid;
+}
+
+function syncBoardStateMetaToState() {
+  mistakes = boardState.mistakes;
+  currentDifficultyScore = boardState.difficultyScore;
+  currentDifficultyTier = boardState.difficultyTier;
+}
+
+function syncStateMetaToBoardState() {
+  boardState.mistakes = mistakes;
+  boardState.difficultyScore = currentDifficultyScore;
+  boardState.difficultyTier = currentDifficultyTier;
+}
 
 // Step-through state
 let stepInterface = null;
@@ -560,6 +598,7 @@ function recomputeDifficultyForCurrentPuzzle() {
   const evaluation = evaluateNonogramDifficulty(rowClues, colClues, { difficultyWeights });
   currentDifficultyScore = evaluation.score;
   currentDifficultyTier = evaluation.maxTier;
+  syncStateMetaToBoardState();
   updateDifficultyDisplay();
   updateBoardStateUrl();
 }
@@ -605,15 +644,16 @@ function normalize2DGrid(raw, rows, cols, validator) {
 }
 
 function encodeBoardStateForUrl() {
-  if (rowClues.length === 0 || colClues.length === 0 || !solution) return null;
+  syncStateMetaToBoardState();
+  if (boardState.rowClues.length === 0 || boardState.colClues.length === 0 || boardState.solution.length === 0) return null;
   const payload = {
-    rowClues,
-    colClues,
-    solution,
-    grid,
-    mistakes,
-    difficultyScore: currentDifficultyScore,
-    difficultyTier: currentDifficultyTier
+    rowClues: boardState.rowClues,
+    colClues: boardState.colClues,
+    solution: boardState.solution,
+    grid: boardState.grid,
+    mistakes: boardState.mistakes,
+    difficultyScore: boardState.difficultyScore,
+    difficultyTier: boardState.difficultyTier
   };
   return `v1.${encodeStateBase64(JSON.stringify(payload))}`;
 }
@@ -686,8 +726,9 @@ function getStorybookBaseUrl() {
   if (window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
   if (window.location.port === '6006') return './';
-  if (isLocalhost) return './stories/';
-  return './stories/';
+  if (window.location.pathname.includes('/stories/')) return './';
+  if (isLocalhost) return '../stories/';
+  return '../stories/';
 }
 
 function storybookUrlForPath(path) {
@@ -733,18 +774,17 @@ function applyBoardSizing(rows, cols, rowClues, colClues) {
 }
 
 function applySnapshotToBoard(snapshot) {
-  rowClues = snapshot.rowClues;
-  colClues = snapshot.colClues;
-  solution = snapshot.solution;
-  grid = snapshot.grid.map((row) => row.slice());
-  mistakes = snapshot.mistakes || 0;
-  if (Number.isFinite(snapshot.difficultyScore) && Number.isInteger(snapshot.difficultyTier)) {
-    currentDifficultyScore = snapshot.difficultyScore;
-    currentDifficultyTier = snapshot.difficultyTier;
+  boardState = createBoardState(snapshot);
+  syncBoardStateRefs();
+  syncBoardStateMetaToState();
+  if (Number.isFinite(boardState.difficultyScore) && Number.isInteger(boardState.difficultyTier)) {
+    currentDifficultyScore = boardState.difficultyScore;
+    currentDifficultyTier = boardState.difficultyTier;
   } else {
     const evaluation = evaluateNonogramDifficulty(rowClues, colClues, { difficultyWeights });
     currentDifficultyScore = evaluation.score;
     currentDifficultyTier = evaluation.maxTier;
+    syncStateMetaToBoardState();
   }
   solved = false;
 
@@ -795,6 +835,7 @@ function startNewGame() {
   mistakes = 0;
   currentDifficultyScore = null;
   currentDifficultyTier = null;
+  syncStateMetaToBoardState();
   updateMistakesDisplay();
   updateDifficultyDisplay();
   setShareStatus('');
@@ -807,14 +848,19 @@ function startNewGame() {
       return;
     }
 
-    rowClues = puzzle.rowClues;
-    colClues = puzzle.colClues;
-    solution = puzzle.solution;
-    currentDifficultyScore = Number.isFinite(puzzle.score) ? puzzle.score : null;
-    currentDifficultyTier = Number.isInteger(puzzle.tier) ? puzzle.tier : null;
-    grid = Array.from({ length: rowClues.length }, () =>
-      new Array(colClues.length).fill(CELL_STATES.UNKNOWN)
-    );
+    boardState = createBoardState({
+      rowClues: puzzle.rowClues,
+      colClues: puzzle.colClues,
+      solution: puzzle.solution,
+      grid: Array.from({ length: puzzle.rowClues.length }, () =>
+        new Array(puzzle.colClues.length).fill(CELL_STATES.UNKNOWN)
+      ),
+      mistakes: 0,
+      difficultyScore: Number.isFinite(puzzle.score) ? puzzle.score : null,
+      difficultyTier: Number.isInteger(puzzle.tier) ? puzzle.tier : null
+    });
+    syncBoardStateRefs();
+    syncBoardStateMetaToState();
 
     applyBoardSizing(rowClues.length, colClues.length, rowClues, colClues);
 
@@ -893,6 +939,7 @@ function clearBoard() {
   hintTextEl.textContent = '';
   resetTimer();
   mistakes = 0;
+  syncStateMetaToBoardState();
   updateMistakesDisplay();
   updateDifficultyDisplay();
   solved = false;

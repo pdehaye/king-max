@@ -821,6 +821,16 @@ test('nonogram page has site nav with Home and King Max links', async ({ page })
   await expect(nav.locator('a[aria-current="page"]')).toContainText('Nonogram');
 });
 
+test('tactical stories footer links resolve to shared stories path', async ({ page }) => {
+  await page.goto('/king-max/');
+  const kingStoriesHref = await page.locator('#tacticalStoriesLink').getAttribute('href');
+  expect(kingStoriesHref).toContain('/stories/?path=/docs/strategy-deterministic-tactics--docs');
+
+  await page.goto('/nonogram/');
+  const nonogramStoriesHref = await page.locator('#tacticalStoriesLink').getAttribute('href');
+  expect(nonogramStoriesHref).toContain('/stories/?path=/docs/nonogram-tactics--docs');
+});
+
 test('game registry GAMES has king-max and nonogram with equal shape', async ({ page }) => {
   await page.goto('/king-max/');
   const result = await page.evaluate(async () => {
