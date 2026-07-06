@@ -1,5 +1,42 @@
 const { test, expect } = require('@playwright/test');
 
+function solveRegionMap(regionMap) {
+  const n = regionMap.length;
+  const usedCols = new Set();
+  const usedRegions = new Set();
+  const placement = new Array(n).fill(-1);
+
+  function candidatesForRow(r) {
+    const cands = [];
+    for (let c = 0; c < n; c++) {
+      const reg = regionMap[r][c];
+      if (usedCols.has(c) || usedRegions.has(reg)) continue;
+      if (r > 0 && Math.abs(placement[r - 1] - c) <= 1) continue;
+      cands.push(c);
+    }
+    return cands;
+  }
+
+  function backtrack(r) {
+    if (r === n) return true;
+    const cands = candidatesForRow(r);
+    for (const c of cands) {
+      const reg = regionMap[r][c];
+      usedCols.add(c);
+      usedRegions.add(reg);
+      placement[r] = c;
+      if (backtrack(r + 1)) return true;
+      usedCols.delete(c);
+      usedRegions.delete(reg);
+      placement[r] = -1;
+    }
+    return false;
+  }
+
+  if (!backtrack(0)) throw new Error('No solution found for current board state');
+  return placement;
+}
+
 test('puzzle logic module invariants stay valid', async ({ page }) => {
   await page.goto('/');
 
@@ -56,6 +93,7 @@ test('ui core loop smoke test', async ({ page }) => {
 
   const cells = page.locator('#board .cell');
   await expect(cells).toHaveCount(64);
+  await expect(page.getByLabel('Target board state difficulty')).toBeVisible();
 
   const firstCell = cells.nth(0);
 
@@ -69,15 +107,36 @@ test('ui core loop smoke test', async ({ page }) => {
   await expect(firstCell.locator('.dot')).toHaveCount(0);
   await expect(firstCell.locator('svg.crown')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'New game' }).click();
+  await page.getByRole('button', { name: 'New board state' }).click();
   await expect(cells).toHaveCount(64);
 
   await cells.nth(1).click();
   await cells.nth(1).click();
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Clear' }).click();
+  await page.getByRole('button', { name: 'Clear board state' }).click();
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(0);
+});
+
+test('win banner appears after solving a board state', async ({ page }) => {
+  await page.goto('/');
+
+  const cells = page.locator('#board .cell');
+  const colors = await cells.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
+  const regionMap = [];
+  for (let r = 0; r < 8; r++) {
+    regionMap.push(colors.slice(r * 8, r * 8 + 8));
+  }
+
+  const placement = solveRegionMap(regionMap);
+  for (let r = 0; r < 8; r++) {
+    const cell = cells.nth(r * 8 + placement[r]);
+    await cell.click();
+    await cell.click();
+  }
+
+  await expect(page.locator('#winBanner')).toHaveClass(/show/);
+  await expect(page.locator('#winStats')).toContainText('board state solved in');
 });
 
 test('subset tactic catches line-to-region subset eliminations', async ({ page }) => {
