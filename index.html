@@ -149,6 +149,8 @@ let boardState = createBoardState();
 let regionOf = boardState.regions;      // n x n region ids
 let cellState = boardState.cells;       // n x n : 0 empty, 1 dot, 2 crown
 let solution = boardState.solution;     // solution[row] = col
+let currentDifficulty = null;
+let currentTier = null;
 let timerInterval = null;
 let seconds = 0;
 let started = false;
@@ -163,9 +165,7 @@ function createBoardState(cand = null){
     cells: Array.from({length:N}, ()=> new Array(N).fill(0)),
     solution: cand ? cand.sol : [],
     knownKings: new Set(),
-    knownAbsence: new Set(),
-    difficulty: cand ? cand.score : null,
-    tier: cand ? cand.tier : null
+    knownAbsence: new Set()
   };
 }
 
@@ -364,6 +364,8 @@ function applyBoardState(cand){
   boardState = createBoardState(cand);
   syncBoardStateRefs();
   refreshBoardStateKnowledge();
+  currentDifficulty = cand ? cand.score : null;
+  currentTier = cand ? cand.tier : null;
   seconds = 0;
   started = false;
   mistakes = 0;
@@ -453,6 +455,8 @@ function resetBoardState(){
   boardState.cells = Array.from({length:N}, ()=> new Array(N).fill(0));
   syncBoardStateRefs();
   refreshBoardStateKnowledge();
+  currentDifficulty = null;
+  currentTier = null;
   mistakes = 0; solved = false;
   seconds = 0; started = false;
   clearInterval(timerInterval);
@@ -643,9 +647,9 @@ function updateStats(){
   const m = Math.floor(seconds/60), s = seconds%60;
   document.getElementById('timer').textContent = m+':'+String(s).padStart(2,'0');
   document.getElementById('mistakes').textContent = mistakes;
-  document.getElementById('difficultyScore').textContent = boardState.difficulty ?? '–';
+  document.getElementById('difficultyScore').textContent = currentDifficulty ?? '–';
   const chip = document.getElementById('difficultyScore').closest('.chip');
-  if(chip) chip.title = boardState.tier ? `Board state difficulty ${boardState.difficulty} — ${TIER_LABELS[boardState.tier]}` : '';
+  if(chip) chip.title = currentTier ? `Board state difficulty ${currentDifficulty} — ${TIER_LABELS[currentTier]}` : '';
 }
 
 function startTimerIfNeeded(){
