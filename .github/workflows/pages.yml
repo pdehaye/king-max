@@ -48,32 +48,12 @@ jobs:
         run: npm ci
       - name: Build website artifact
         run: npm run build:site
-      - name: Stage site under /games/king-max
-        run: |
-          rm -rf .pages
-          mkdir -p .pages/games/king-max
-          cp -R _site/. .pages/games/king-max/
-          cat > .pages/index.html <<'HTML'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <meta http-equiv="refresh" content="0; url=/king-max/games/king-max/" />
-            <title>Redirecting…</title>
-          </head>
-          <body>
-            <p>Redirecting to <a href="/king-max/games/king-max/">/king-max/games/king-max/</a>…</p>
-          </body>
-          </html>
-          HTML
-          touch .pages/.nojekyll
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.pages'
+          path: '_site'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

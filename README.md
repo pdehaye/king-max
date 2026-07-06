@@ -1,3 +1,3 @@
-# king-max
+# games
 
-This repo is hosted on GitHub Pages at [https://pdehaye.github.io/](https://pdehaye.github.io/).
+This repo is hosted on GitHub Pages at [https://pdehaye.github.io/games/](https://pdehaye.github.io/games/).
