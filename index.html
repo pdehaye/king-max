@@ -124,6 +124,7 @@
 import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from './js/puzzle-logic.js';
 import { applyRegionBorders, crownSVGMarkup, regionColor } from './js/board-visuals.js';
 import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './js/deterministic-tactics.js';
+import { humanSolve } from './js/human-solver.js';
 import {
   DEFAULT_DIFFICULTY_WEIGHTS,
   deterministicStepWeight,
@@ -160,10 +161,14 @@ let difficultyWeights = loadDifficultyWeights();
 
 function createBoardState(cand = null){
   // Board state keeps regions, confirmed kings, and known absence together.
+  const regions = cand ? (cand.region || cand.regions || []) : [];
+  const solution = cand ? (cand.sol || cand.solution || []) : [];
   return {
-    regions: cand ? cand.region : [],
-    cells: Array.from({length:N}, ()=> new Array(N).fill(0)),
-    solution: cand ? cand.sol : [],
+    regions,
+    cells: cand && Array.isArray(cand.cells)
+      ? cand.cells.map((row) => row.slice())
+      : Array.from({length:N}, ()=> new Array(N).fill(0)),
+    solution,
     knownKings: new Set(),
     knownAbsence: new Set()
   };
@@ -220,6 +225,61 @@ function refreshBoardStateKnowledge(){
   }
   boardState.knownKings = knownKings;
   boardState.knownAbsence = computeKnownAbsenceFromKings();
+}
+
+function encodeBoardStateForUrl(){
+  const flatten = (grid) => grid.map((row) => row.join('')).join('');
+  return `v1.${flatten(regionOf)}.${flatten(cellState)}.${solution.join('')}`;
+}
+
+function decodeBoardStateFromUrl(encoded){
+  if(!encoded || typeof encoded !== 'string') return null;
+  const parts = encoded.split('.');
+  if(parts.length !== 4 || parts[0] !== 'v1') return null;
+  const [_, regionsRaw, cellsRaw, solutionRaw] = parts;
+  if(regionsRaw.length !== N * N || cellsRaw.length !== N * N || solutionRaw.length !== N) return null;
+
+  const parseDigits = (raw, allowedMax) => {
+    const values = [];
+    for(let i = 0; i < raw.length; i++){
+      const n = Number(raw[i]);
+      if(!Number.isInteger(n) || n < 0 || n > allowedMax) return null;
+      values.push(n);
+    }
+    return values;
+  };
+
+  const regionDigits = parseDigits(regionsRaw, N - 1);
+  const cellDigits = parseDigits(cellsRaw, 2);
+  const solutionDigits = parseDigits(solutionRaw, N - 1);
+  if(!regionDigits || !cellDigits || !solutionDigits) return null;
+
+  const regions = [];
+  const cells = [];
+  for(let r = 0; r < N; r++){
+    regions.push(regionDigits.slice(r * N, (r + 1) * N));
+    cells.push(cellDigits.slice(r * N, (r + 1) * N));
+  }
+
+  return {
+    regions,
+    cells,
+    solution: solutionDigits
+  };
+}
+
+function updateBoardStateUrl(){
+  const url = new URL(window.location.href);
+  url.searchParams.set('board', encodeBoardStateForUrl());
+  window.history.replaceState(null, '', url.toString());
+}
+
+function loadBoardStateFromUrl(){
+  const url = new URL(window.location.href);
+  const encoded = url.searchParams.get('board');
+  if(!encoded) return { snapshot: null, invalid: false };
+  const snapshot = decodeBoardStateFromUrl(encoded);
+  return snapshot ? { snapshot, invalid: false } : { snapshot: null, invalid: true };
 }
 
 function loadDifficultyWeights(){
@@ -360,12 +420,19 @@ function buildTacticControls(){
   });
 }
 
-function applyBoardState(cand){
+function applyBoardState(cand, options = {}){
+  const { runEnabledTactics = true } = options;
   boardState = createBoardState(cand);
   syncBoardStateRefs();
   refreshBoardStateKnowledge();
-  currentDifficulty = cand ? cand.score : null;
-  currentTier = cand ? cand.tier : null;
+  if(cand && Number.isFinite(cand.score) && Number.isInteger(cand.tier)){
+    currentDifficulty = cand.score;
+    currentTier = cand.tier;
+  } else {
+    const evaluation = humanSolve(N, boardState.regions, { difficultyWeights });
+    currentDifficulty = evaluation.score;
+    currentTier = evaluation.tier;
+  }
   seconds = 0;
   started = false;
   mistakes = 0;
@@ -373,8 +440,11 @@ function applyBoardState(cand){
   clearInterval(timerInterval);
   updateStats();
   document.getElementById('winBanner').classList.remove('show');
+  updateBoardStateUrl();
   renderBoard();
-  runEnabledTacticsContinuous({statusIfNoProgress:false});
+  if(runEnabledTactics){
+    runEnabledTacticsContinuous({statusIfNoProgress:false});
+  }
 }
 
 function newBoardState(){
@@ -568,6 +638,7 @@ function syncBoardStateFromContext(ctx){
     }
   }
   refreshBoardStateKnowledge();
+  updateBoardStateUrl();
 }
 
 function applyTacticToBoard(tacticId, options = {}){
@@ -754,6 +825,7 @@ function onCellClick(r,c){
   } else {
    refreshBoardStateKnowledge();
   }
+  updateBoardStateUrl();
   updateStats();
   renderBoard();
   checkBoardStateWin();
@@ -780,6 +852,20 @@ function openBoardStateConfigFromWin(){
   const panel = document.querySelector('.difficulty-panel');
   panel?.scrollIntoView({ behavior:'smooth', block:'center' });
   document.getElementById('difficultyInput')?.focus();
+}
+
+function initializeBoardStateFromUrl(){
+  const { snapshot, invalid } = loadBoardStateFromUrl();
+  if(snapshot){
+    applyBoardState(snapshot, { runEnabledTactics: false });
+    setDifficultyStatus('Loaded board state from URL.');
+    return;
+  }
+
+  newBoardState();
+  if(invalid){
+    setDifficultyStatus('Invalid board state link — started a new board state instead.', true);
+  }
 }
 
 document.getElementById('newGameBtn').addEventListener('click', newBoardState);
@@ -836,7 +922,7 @@ document.getElementById('rulesToggle').addEventListener('click', ()=>{
 buildTacticControls();
 refreshWeightInputs();
 wireStorybookLinks();
-newBoardState();
+initializeBoardStateFromUrl();
 </script>
 </body>
 </html>
