@@ -347,8 +347,10 @@ function getTacticById(tacticId){
 function getStorybookBaseUrl(){
   if(window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
   const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  const isGithubPagesHost = window.location.hostname.endsWith('.github.io');
   if(window.location.port === '6006') return './';
   if(window.location.pathname.includes('/stories/')) return './';
+  if(isGithubPagesHost) return '../storybook-static/';
   if(isLocalhost) return '../stories/';
   return '../stories/';
 }

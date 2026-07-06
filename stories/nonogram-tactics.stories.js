@@ -15,6 +15,7 @@ import {
   tryContradictionEmpty
 } from '../js/nonogram/tactics.js';
 import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
+import { nonogramExamples } from './generated/nonogram-examples.generated.js';
 
 const meta = {
   title: 'Nonogram/Tactics',
@@ -170,9 +171,18 @@ const U = CELL_STATES.UNKNOWN;
 const F = CELL_STATES.FILLED;
 const E = CELL_STATES.EMPTY;
 
-export const EmptyLine = makeTacticStory({
-  tacticLabel: 'Empty Line',
-  description: 'When all clues for a row or column are zero, every cell in that line must be empty.',
+function generatedScenario(tacticId, fallback) {
+  const examples = nonogramExamples[tacticId];
+  if (!Array.isArray(examples) || examples.length === 0) return fallback;
+  const pick = examples[0];
+  return {
+    rowClues: pick.rowClues,
+    colClues: pick.colClues,
+    initialGrid: pick.beforeGrid
+  };
+}
+
+const EMPTY_LINE_SCENARIO = generatedScenario('empty-line', {
   rowClues: [[0], [2], [1], [0], [3]],
   colClues: [[1], [2], [1], [1], [1]],
   initialGrid: [
@@ -181,15 +191,21 @@ export const EmptyLine = makeTacticStory({
     [U, U, U, U, U],
     [U, U, U, U, U],
     [U, U, U, U, U]
-  ],
+  ]
+});
+
+export const EmptyLine = makeTacticStory({
+  tacticLabel: 'Empty Line',
+  description: 'When all clues for a row or column are zero, every cell in that line must be empty.',
+  rowClues: EMPTY_LINE_SCENARIO.rowClues,
+  colClues: EMPTY_LINE_SCENARIO.colClues,
+  initialGrid: EMPTY_LINE_SCENARIO.initialGrid,
   tacticFn: tryEmptyLine
 });
 
 // ─── Story: Full Line ─────────────────────────────────────────────────────────
 
-export const FullLine = makeTacticStory({
-  tacticLabel: 'Full Line',
-  description: 'When the sum of clues + gaps exactly equals the line length, every cell\'s state is fully determined.',
+const FULL_LINE_SCENARIO = generatedScenario('full-line', {
   rowClues: [[1, 1, 1], [5], [2, 2], [1, 3], [5]],
   colClues: [[2], [1, 1], [1, 2], [2, 1], [1, 1]],
   initialGrid: [
@@ -198,15 +214,21 @@ export const FullLine = makeTacticStory({
     [U, U, U, U, U],
     [U, U, U, U, U],
     [U, U, U, U, U]
-  ],
+  ]
+});
+
+export const FullLine = makeTacticStory({
+  tacticLabel: 'Full Line',
+  description: 'When the sum of clues + gaps exactly equals the line length, every cell\'s state is fully determined.',
+  rowClues: FULL_LINE_SCENARIO.rowClues,
+  colClues: FULL_LINE_SCENARIO.colClues,
+  initialGrid: FULL_LINE_SCENARIO.initialGrid,
   tacticFn: tryFullLine
 });
 
 // ─── Story: Overlap ───────────────────────────────────────────────────────────
 
-export const Overlap = makeTacticStory({
-  tacticLabel: 'Overlap',
-  description: 'Cells that are filled in every possible valid placement of the clue blocks can be marked filled immediately.',
+const OVERLAP_SCENARIO = generatedScenario('overlap', {
   rowClues: [[3], [1, 1], [4], [2], [1, 2]],
   colClues: [[2], [3], [1, 1], [2], [2]],
   initialGrid: [
@@ -215,15 +237,21 @@ export const Overlap = makeTacticStory({
     [U, U, U, U, U],
     [U, U, U, U, U],
     [U, U, U, U, U]
-  ],
+  ]
+});
+
+export const Overlap = makeTacticStory({
+  tacticLabel: 'Overlap',
+  description: 'Cells that are filled in every possible valid placement of the clue blocks can be marked filled immediately.',
+  rowClues: OVERLAP_SCENARIO.rowClues,
+  colClues: OVERLAP_SCENARIO.colClues,
+  initialGrid: OVERLAP_SCENARIO.initialGrid,
   tacticFn: tryOverlap
 });
 
 // ─── Story: Edge Fill ─────────────────────────────────────────────────────────
 
-export const EdgeFill = makeTacticStory({
-  tacticLabel: 'Edge Fill',
-  description: 'When a clue block touches the edge of the line, additional cells from that edge inward must be filled.',
+const EDGE_FILL_SCENARIO = generatedScenario('edge-fill', {
   rowClues: [[3], [2], [4], [1], [2]],
   colClues: [[2], [3], [1], [3], [1]],
   initialGrid: [
@@ -232,15 +260,21 @@ export const EdgeFill = makeTacticStory({
     [U, U, U, U, F],
     [U, U, U, U, U],
     [F, U, U, U, U]
-  ],
+  ]
+});
+
+export const EdgeFill = makeTacticStory({
+  tacticLabel: 'Edge Fill',
+  description: 'When a clue block touches the edge of the line, additional cells from that edge inward must be filled.',
+  rowClues: EDGE_FILL_SCENARIO.rowClues,
+  colClues: EDGE_FILL_SCENARIO.colClues,
+  initialGrid: EDGE_FILL_SCENARIO.initialGrid,
   tacticFn: tryEdgeFill
 });
 
 // ─── Story: Box Reduction ─────────────────────────────────────────────────────
 
-export const BoxReduction = makeTacticStory({
-  tacticLabel: 'Box Reduction',
-  description: 'A contiguous run of filled cells that can only belong to one clue block lets us eliminate cells outside that block\'s valid range.',
+const BOX_REDUCTION_SCENARIO = generatedScenario('box-reduction', {
   rowClues: [[4], [1, 1], [3], [2], [1, 2]],
   colClues: [[2], [3], [1, 1], [2], [2]],
   initialGrid: [
@@ -249,15 +283,21 @@ export const BoxReduction = makeTacticStory({
     [U, U, F, F, U],
     [U, U, U, U, U],
     [U, U, U, U, U]
-  ],
+  ]
+});
+
+export const BoxReduction = makeTacticStory({
+  tacticLabel: 'Box Reduction',
+  description: 'A contiguous run of filled cells that can only belong to one clue block lets us eliminate cells outside that block\'s valid range.',
+  rowClues: BOX_REDUCTION_SCENARIO.rowClues,
+  colClues: BOX_REDUCTION_SCENARIO.colClues,
+  initialGrid: BOX_REDUCTION_SCENARIO.initialGrid,
   tacticFn: tryBoxReduction
 });
 
 // ─── Story: Contradiction Empty ───────────────────────────────────────────────
 
-export const ContradictionEmpty = makeTacticStory({
-  tacticLabel: 'Contradiction Empty',
-  description: 'If marking a cell filled would leave no valid placement for the line, that cell must be empty.',
+const CONTRADICTION_EMPTY_SCENARIO = generatedScenario('contradiction-empty', {
   rowClues: [[1, 1], [2], [1], [2], [1, 1]],
   colClues: [[2], [1], [2], [1], [2]],
   initialGrid: [
@@ -266,6 +306,14 @@ export const ContradictionEmpty = makeTacticStory({
     [U, U, U, U, U],
     [U, U, U, U, U],
     [U, U, U, U, U]
-  ],
+  ]
+});
+
+export const ContradictionEmpty = makeTacticStory({
+  tacticLabel: 'Contradiction Empty',
+  description: 'If marking a cell filled would leave no valid placement for the line, that cell must be empty.',
+  rowClues: CONTRADICTION_EMPTY_SCENARIO.rowClues,
+  colClues: CONTRADICTION_EMPTY_SCENARIO.colClues,
+  initialGrid: CONTRADICTION_EMPTY_SCENARIO.initialGrid,
   tacticFn: tryContradictionEmpty
 });
