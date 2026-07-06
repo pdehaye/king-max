@@ -38,10 +38,10 @@ function solveRegionMap(regionMap) {
 }
 
 test('puzzle logic module invariants stay valid', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('./js/puzzle-logic.js');
+    const mod = await import('../js/puzzle-logic.js');
     const n = mod.BOARD_SIZE;
 
     function isValidSolution(sol) {
@@ -89,7 +89,7 @@ test('puzzle logic module invariants stay valid', async ({ page }) => {
 });
 
 test('ui core loop smoke test', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
   await expect(cells).toHaveCount(64);
@@ -119,7 +119,7 @@ test('ui core loop smoke test', async ({ page }) => {
 });
 
 test('board state is encoded in and restored from the URL', async ({ page, context }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
   const crownCell = cells.nth(0);
@@ -146,7 +146,7 @@ test('board state is encoded in and restored from the URL', async ({ page, conte
 
 test('share button copies the current encoded board URL', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
   await cells.nth(0).click();
@@ -161,7 +161,7 @@ test('share button copies the current encoded board URL', async ({ page, context
 });
 
 test('win banner appears after solving a board state', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
   const colors = await cells.evaluateAll((els) => els.map((el) => getComputedStyle(el).backgroundColor));
@@ -182,10 +182,10 @@ test('win banner appears after solving a board state', async ({ page }) => {
 });
 
 test('subset tactic catches line-to-region subset eliminations', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('./js/deterministic-tactics.js');
+    const mod = await import('../js/deterministic-tactics.js');
 
     const n = 4;
     const region = [
@@ -242,11 +242,11 @@ test('subset tactic catches line-to-region subset eliminations', async ({ page }
 });
 
 test('custom tactic weights influence difficulty scoring', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const solver = await import('./js/human-solver.js');
-    const weightMod = await import('./js/difficulty-weights.js');
+    const solver = await import('../js/human-solver.js');
+    const weightMod = await import('../js/difficulty-weights.js');
 
     const n = 8;
     const region = Array.from({ length: n }, (_, r) =>

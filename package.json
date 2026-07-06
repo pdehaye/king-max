@@ -9,7 +9,7 @@
     "sync:storybook:site": "npm run build-storybook && rm -rf _site/stories && mkdir -p _site/stories && cp -R storybook-static/. _site/stories/",
     "watch:storybook:site": "chokidar \"stories/**/*.js\" \"stories/**/*.html\" \".storybook/**/*\" \"js/deterministic-tactics.js\" -c \"npm run sync:storybook:site\" --initial",
     "examples:deterministic": "node --experimental-default-type=module scripts/discover-deterministic-examples.mjs",
-    "build:site:base": "rm -rf _site && mkdir -p _site _site/js _site/stories && cp index.html _site/index.html && cp styles.css _site/styles.css && cp social-preview.svg social-preview.png _site/ && cp -R js/. _site/js/ && touch _site/.nojekyll",
+    "build:site:base": "rm -rf _site && mkdir -p _site _site/js _site/stories _site/king-max && cp index.html _site/index.html && cp styles.css _site/styles.css && cp social-preview.svg social-preview.png _site/ && cp -R js/. _site/js/ && cp king-max/index.html _site/king-max/index.html && cp social-preview.svg social-preview.png _site/king-max/ && touch _site/.nojekyll",
     "build:site": "npm run build:site:base && npm run build-storybook && cp -R storybook-static/. _site/stories/",
     "serve:site": "npm run build:site && python3 -m http.server 8080 --directory _site",
     "dev:stories:site": "npm run build:site:base && npm run watch:storybook:site",

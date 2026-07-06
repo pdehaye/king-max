@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Max</title>
+<meta name="description" content="King Max is a realm logic puzzle: track regions, confirmed kings, and known absence of kings.">
+<meta name="theme-color" content="#2B2420">
+<link rel="canonical" href="https://pdehaye.github.io/games/king-max/">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="King Max">
+<meta property="og:title" content="King Max - Crown Logic Puzzle">
+<meta property="og:description" content="A deterministic realm puzzle with one ruler per row, column, and realm.">
+<meta property="og:url" content="https://pdehaye.github.io/games/king-max/">
+<meta property="og:image" content="https://pdehaye.github.io/games/king-max/social-preview.png">
+<meta property="og:image:secure_url" content="https://pdehaye.github.io/games/king-max/social-preview.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="King Max puzzle preview with crown icon and game board.">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="King Max - Crown Logic Puzzle">
+<meta name="twitter:description" content="Track regions, confirmed kings, and known absence of kings.">
+<meta name="twitter:image" content="https://pdehaye.github.io/games/king-max/social-preview.png">
+<meta name="twitter:image:alt" content="King Max puzzle preview with crown icon and game board.">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">A crest for every crown</div>
+    <h1>
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 18L2 8L7 11.5L12 5L17 11.5L22 8L21 18H3Z" fill="var(--gold)" stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round"/>
+        <rect x="3" y="18" width="18" height="2.6" rx="0.6" fill="var(--gold)" stroke="var(--ink)" stroke-width="1.2"/>
+      </svg>
+      King Max
+    </h1>
+    <div class="tagline">one ruler per row, column & realm</div>
+  </header>
+
+  <div class="difficulty-panel">
+    <label for="difficultyInput">Target realm difficulty</label>
+    <div class="difficulty-row">
+      <input type="number" id="difficultyInput" placeholder="e.g. 150" min="1">
+      <button id="findDifficultyBtn">Find realm</button>
+    </div>
+    <p class="difficulty-status" id="difficultyStatus"></p>
+  </div>
+
+  <div class="stats">
+    <div class="chip">⏱ <b id="timer">0:00</b></div>
+    <div class="chip mistakes">✕ <b id="mistakes">0</b> mistakes</div>
+    <div class="chip">🧩 <b id="difficultyScore">–</b></div>
+  </div>
+
+  <div class="board-frame">
+    <div id="board"></div>
+  </div>
+
+  <div class="controls">
+    <button id="newGameBtn" class="primary">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+      New realm
+    </button>
+    <button id="resetBtn" title="Clear realm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+      Clear realm
+    </button>
+    <button id="hintBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 16v.01M12 8a2.5 2.5 0 0 1 2 4c-.6.6-1 1-1 2"/></svg>
+      Realm hint
+    </button>
+    <button id="shareBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 5l-1.5 1.5 2.5 2.5M10 12h4a4 4 0 0 1 0 8h-4a4 4 0 0 1 0-8z"/><path d="M10 12a4 4 0 0 1 0-8h4a4 4 0 0 1 0 8"/></svg>
+      Share realm
+    </button>
+  </div>
+  <p class="share-status" id="shareStatus" aria-live="polite"></p>
+
+  <div class="tactic-panel">
+    <label>Realm tactics</label>
+    <div id="tacticsList" class="tactics-list" aria-label="Deterministic tactic controls"></div>
+    <button id="resetWeightsBtn" class="weight-reset-btn" type="button">Reset tactic weights</button>
+    <p class="tactic-status" id="tacticStatus"></p>
+  </div>
+
+  <div class="rules" id="rules">
+    <b>How to fill the crest:</b>
+    <ul>
+      <li>The realm keeps the region structure plus the confirmed king positions and known absence of kings.</li>
+      <li>Confirm exactly one king in every row, every column, and every colored region.</li>
+      <li>Kings may never touch — not even diagonally.</li>
+      <li>Tap a tile once to mark known absence of a king, tap again for a king, tap once more to clear it.</li>
+      <li>Placing a king updates the realm by ruling out its row, column, region, and neighbors.</li>
+    </ul>
+  </div>
+
+  <aside class="why-box" aria-label="Project motivation">
+    <h2>Why?</h2>
+    <p>Hi! I am <a href="https://www.linkedin.com/in/paulolivierdehaye/" target="_blank" rel="noopener noreferrer">Paul-Olivier Dehaye</a>. This is so I can play with my kids, without the constraints associated to playing on <a href="https://www.linkedin.com/games/queens/" target="_blank" rel="noopener noreferrer">LinkedIn's Queens</a>. Further goals will be explained through my <a href="https://www.linkedin.com/newsletters/7128314238875373568/" target="_blank" rel="noopener noreferrer">LinkedIn newsletter</a>.</p>
+  </aside>
+
+  <footer class="hint-toggle">
+    <a id="rulesToggle">How to play</a>
+    <span aria-hidden="true"> · </span>
+    <a id="tacticalStoriesLink" href="../stories/?path=/docs/strategy-deterministic-tactics--docs" target="_blank" rel="noopener noreferrer">Tactical stories</a>
+  </footer>
+</div>
+
+<div class="win-banner" id="winBanner">
+  <div class="win-card">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 18L2 8L7 11.5L12 5L17 11.5L22 8L21 18H3Z" fill="var(--gold)" stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>
+    <h2>Realm complete</h2>
+    <p id="winStats">realm solved in 0:00 · 0 mistakes</p>
+    <div class="win-actions">
+      <button id="changeConfigBtn">Change realm</button>
+      <button class="primary" id="playAgainBtn">New realm</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from '../js/puzzle-logic.js';
+import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/board-visuals.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/deterministic-tactics.js';
+import { humanSolve } from '../js/human-solver.js';
+import {
+  DEFAULT_DIFFICULTY_WEIGHTS,
+  deterministicStepWeight,
+  normalizeDifficultyWeights
+} from '../js/difficulty-weights.js';
+
+const STORYBOOK_TACTIC_QUERIES = {
+  'hidden-singles': '/story/strategy-deterministic-tactics--hidden-singles',
+  'locked-candidates': '/story/strategy-deterministic-tactics--locked-candidates',
+  subsets: '/story/strategy-deterministic-tactics--subsets',
+  'excluded-neighbour-twins': '/story/strategy-deterministic-tactics--excluded-neighbour-twins',
+  'excluded-neighbour-two': '/story/strategy-deterministic-tactics--excluded-neighbour-two',
+  'excluded-neighbour-three': '/story/strategy-deterministic-tactics--excluded-neighbour-three',
+  'excluded-neighbour-four': '/story/strategy-deterministic-tactics--excluded-neighbour-four',
+  'coupled-region-pairs-two': '/story/strategy-deterministic-tactics--coupled-regions-2x2'
+};
+
+const STORYBOOK_DEFAULT_QUERY = '/story/strategy-deterministic-tactics--direct-links';
+const STORYBOOK_DOCS_QUERY = '/docs/strategy-deterministic-tactics--docs';
+const DIFFICULTY_WEIGHTS_STORAGE_KEY = 'kingmax-difficulty-weights-v1';
+
+let boardState = createBoardState();
+let regionOf = boardState.regions;      // n x n region ids
+let cellState = boardState.cells;       // n x n : 0 empty, 1 dot, 2 crown
+let solution = boardState.solution;     // solution[row] = col
+let currentDifficulty = null;
+let currentTier = null;
+let timerInterval = null;
+let seconds = 0;
+let started = false;
+let mistakes = 0;
+let solved = false;
+let difficultyWeights = loadDifficultyWeights();
+
+function createBoardState(cand = null){
+  // Board state keeps regions, confirmed kings, and known absence together.
+  const regions = cand ? (cand.region || cand.regions || []) : [];
+  const solution = cand ? (cand.sol || cand.solution || []) : [];
+  return {
+    regions,
+    cells: cand && Array.isArray(cand.cells)
+      ? cand.cells.map((row) => row.slice())
+      : Array.from({length:N}, ()=> new Array(N).fill(0)),
+    solution,
+    knownKings: new Set(),
+    knownAbsence: new Set()
+  };
+}
+
+function syncBoardStateRefs(){
+  regionOf = boardState.regions;
+  cellState = boardState.cells;
+  solution = boardState.solution;
+}
+
+function computeKnownAbsenceFromKings(){
+  const knownAbsence = new Set();
+  const kings = Array.from(boardState.knownKings, (key) => {
+    const [r, c] = key.split(',').map(Number);
+    return { r, c };
+  });
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 1) knownAbsence.add(`${r},${c}`);
+    }
+  }
+
+  kings.forEach((king) => {
+    const reg = regionOf[king.r][king.c];
+    for(let i = 0; i < N; i++){
+      knownAbsence.add(`${king.r},${i}`);
+      knownAbsence.add(`${i},${king.c}`);
+    }
+    for(let r = 0; r < N; r++){
+      for(let c = 0; c < N; c++){
+        if(regionOf[r][c] === reg) knownAbsence.add(`${r},${c}`);
+      }
+    }
+    for(let dr = -1; dr <= 1; dr++){
+      for(let dc = -1; dc <= 1; dc++){
+        const nr = king.r + dr;
+        const nc = king.c + dc;
+        if(nr >= 0 && nr < N && nc >= 0 && nc < N) knownAbsence.add(`${nr},${nc}`);
+      }
+    }
+  });
+
+  return knownAbsence;
+}
+
+function refreshBoardStateKnowledge(){
+  const knownKings = new Set();
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 2) knownKings.add(`${r},${c}`);
+    }
+  }
+  boardState.knownKings = knownKings;
+  boardState.knownAbsence = computeKnownAbsenceFromKings();
+}
+
+function encodeBoardStateForUrl(){
+  const flatten = (grid) => grid.map((row) => row.join('')).join('');
+  return `v1.${flatten(regionOf)}.${flatten(cellState)}.${solution.join('')}`;
+}
+
+function decodeBoardStateFromUrl(encoded){
+  if(!encoded || typeof encoded !== 'string') return null;
+  const parts = encoded.split('.');
+  if(parts.length !== 4 || parts[0] !== 'v1') return null;
+  const [_, regionsRaw, cellsRaw, solutionRaw] = parts;
+  if(regionsRaw.length !== N * N || cellsRaw.length !== N * N || solutionRaw.length !== N) return null;
+
+  const parseDigits = (raw, allowedMax) => {
+    const values = [];
+    for(let i = 0; i < raw.length; i++){
+      const n = Number(raw[i]);
+      if(!Number.isInteger(n) || n < 0 || n > allowedMax) return null;
+      values.push(n);
+    }
+    return values;
+  };
+
+  const regionDigits = parseDigits(regionsRaw, N - 1);
+  const cellDigits = parseDigits(cellsRaw, 2);
+  const solutionDigits = parseDigits(solutionRaw, N - 1);
+  if(!regionDigits || !cellDigits || !solutionDigits) return null;
+
+  const regions = [];
+  const cells = [];
+  for(let r = 0; r < N; r++){
+    regions.push(regionDigits.slice(r * N, (r + 1) * N));
+    cells.push(cellDigits.slice(r * N, (r + 1) * N));
+  }
+
+  return {
+    regions,
+    cells,
+    solution: solutionDigits
+  };
+}
+
+function updateBoardStateUrl(){
+  const url = new URL(window.location.href);
+  url.searchParams.set('board', encodeBoardStateForUrl());
+  window.history.replaceState(null, '', url.toString());
+}
+
+function loadBoardStateFromUrl(){
+  const url = new URL(window.location.href);
+  const encoded = url.searchParams.get('board');
+  if(!encoded) return { snapshot: null, invalid: false };
+  const snapshot = decodeBoardStateFromUrl(encoded);
+  return snapshot ? { snapshot, invalid: false } : { snapshot: null, invalid: true };
+}
+
+function loadDifficultyWeights(){
+  try {
+    const raw = localStorage.getItem(DIFFICULTY_WEIGHTS_STORAGE_KEY);
+    if(!raw) return normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+    return normalizeDifficultyWeights(JSON.parse(raw));
+  } catch {
+    return normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+  }
+}
+
+function saveDifficultyWeights(){
+  localStorage.setItem(DIFFICULTY_WEIGHTS_STORAGE_KEY, JSON.stringify(difficultyWeights));
+}
+
+function getObservedRegionCounts(tactic){
+  const min = tactic.regionsObserved?.min ?? 1;
+  const max = tactic.regionsObserved?.max ?? min;
+  const counts = [];
+  for(let i = min; i <= max; i++) counts.push(i);
+  return counts;
+}
+
+function getDisplayedWeight(tacticId, observedRegions){
+  return deterministicStepWeight(difficultyWeights, tacticId, observedRegions);
+}
+
+function setDisplayedWeight(tacticId, observedRegions, value){
+  const next = normalizeDifficultyWeights(difficultyWeights);
+  if(!next.deterministic[tacticId]) next.deterministic[tacticId] = {};
+  next.deterministic[tacticId][String(observedRegions)] = value;
+  difficultyWeights = normalizeDifficultyWeights(next);
+  saveDifficultyWeights();
+}
+
+function refreshWeightInputs(){
+  const inputs = document.querySelectorAll('.tactic-weight-input');
+  inputs.forEach((input) => {
+    const tacticId = input.dataset.tacticId;
+    const observedRegions = Number(input.dataset.observedRegions || '1');
+    input.value = String(getDisplayedWeight(tacticId, observedRegions));
+  });
+}
+
+function getTacticById(tacticId){
+  return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
+}
+
+function getStorybookBaseUrl(){
+  if(window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if(window.location.port === '6006') return './';
+  if(isLocalhost) return './stories/';
+  return './stories/';
+}
+
+function storybookUrlForPath(path){
+  return `${getStorybookBaseUrl()}?path=${path}`;
+}
+
+function wireStorybookLinks(){
+  const link = document.getElementById('tacticalStoriesLink');
+  if(!link) return;
+  link.href = storybookUrlForPath(STORYBOOK_DOCS_QUERY);
+}
+
+function buildTacticControls(){
+  const list = document.getElementById('tacticsList');
+  list.innerHTML = '';
+
+  DETERMINISTIC_TACTIC_DESCRIPTORS.forEach((tactic) => {
+    const row = document.createElement('div');
+    row.className = 'tactic-row';
+
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'tactic-apply-btn';
+    applyBtn.dataset.tacticId = tactic.id;
+    applyBtn.textContent = tactic.label;
+
+    const weightsWrap = document.createElement('div');
+    weightsWrap.className = 'tactic-weights';
+
+    const counts = getObservedRegionCounts(tactic);
+    counts.forEach((count) => {
+      const weightLabel = document.createElement('label');
+      weightLabel.className = 'tactic-weight';
+      weightLabel.title = `Weight for ${tactic.label} when ${count} region${count === 1 ? '' : 's'} are observed`;
+
+      const tag = document.createElement('span');
+      tag.textContent = counts.length === 1 ? 'w' : `${count}r`;
+
+      const weightInput = document.createElement('input');
+      weightInput.type = 'number';
+      weightInput.min = '0';
+      weightInput.step = '1';
+      weightInput.className = 'tactic-weight-input';
+      weightInput.dataset.tacticId = tactic.id;
+      weightInput.dataset.observedRegions = String(count);
+      weightInput.value = String(getDisplayedWeight(tactic.id, count));
+      weightInput.ariaLabel = `Weight for ${tactic.label} with ${count} observed region${count===1?'':'s'}`;
+
+      weightLabel.appendChild(tag);
+      weightLabel.appendChild(weightInput);
+      weightsWrap.appendChild(weightLabel);
+    });
+
+    const assistLabel = document.createElement('label');
+    assistLabel.className = 'assist-toggle';
+    assistLabel.title = 'Continuously apply this tactic while you play';
+
+    const assistCheckbox = document.createElement('input');
+    assistCheckbox.type = 'checkbox';
+    assistCheckbox.className = 'assist-checkbox';
+    assistCheckbox.dataset.tacticId = tactic.id;
+    assistCheckbox.ariaLabel = `Continuously apply ${tactic.label}`;
+
+    const assistText = document.createElement('span');
+    assistText.textContent = 'auto';
+
+    assistLabel.appendChild(assistCheckbox);
+    assistLabel.appendChild(assistText);
+
+    const storyBtn = document.createElement('button');
+    storyBtn.type = 'button';
+    storyBtn.className = 'icon-btn tactic-story-btn';
+    storyBtn.dataset.tacticId = tactic.id;
+    storyBtn.ariaLabel = `Open ${tactic.label} story`;
+    storyBtn.title = `Open ${tactic.label} story in a new window`;
+    storyBtn.textContent = '?';
+
+    row.appendChild(applyBtn);
+    row.appendChild(weightsWrap);
+    row.appendChild(assistLabel);
+    row.appendChild(storyBtn);
+    list.appendChild(row);
+  });
+}
+
+function applyBoardState(cand, options = {}){
+  const { runEnabledTactics = true } = options;
+  boardState = createBoardState(cand);
+  syncBoardStateRefs();
+  refreshBoardStateKnowledge();
+  if(cand && Number.isFinite(cand.score) && Number.isInteger(cand.tier)){
+    currentDifficulty = cand.score;
+    currentTier = cand.tier;
+  } else {
+    const evaluation = humanSolve(N, boardState.regions, { difficultyWeights });
+    currentDifficulty = evaluation.score;
+    currentTier = evaluation.tier;
+  }
+  seconds = 0;
+  started = false;
+  mistakes = 0;
+  solved = false;
+  clearInterval(timerInterval);
+  updateStats();
+  document.getElementById('winBanner').classList.remove('show');
+  updateBoardStateUrl();
+  renderBoard();
+  if(runEnabledTactics){
+    runEnabledTacticsContinuous({statusIfNoProgress:false});
+  }
+}
+
+function newBoardState(){
+  applyBoardState(generateUniquePuzzle({ difficultyWeights }));
+  setDifficultyStatus('');
+  setTacticStatus('');
+}
+
+// Searches for a unique-solution board whose difficulty score lands within
+// `tolFrac` of `target`. Runs in small batches with a yield between them so
+// the tab stays responsive, and reports the closest match if it runs out of
+// search budget before landing inside the tolerance band.
+async function findPuzzleForDifficulty(target, tolFrac=0.10, timeBudgetMs=6000){
+  const tol = Math.max(1, target*tolFrac);
+  let best = null;
+  let bestDiff = Infinity;
+  let attempts = 0;
+  const t0 = performance.now();
+
+  while(performance.now() - t0 < timeBudgetMs){
+    for(let i=0;i<250;i++){
+      attempts++;
+      const cand = tryGenerateCandidate({ difficultyWeights });
+      if(!cand) continue;
+      const diff = Math.abs(cand.score - target);
+      if(diff < bestDiff){ bestDiff = diff; best = cand; }
+      if(diff <= tol){
+        return {cand: best, attempts, matched:true};
+      }
+    }
+    setDifficultyStatus(`Searching realms… ${attempts.toLocaleString()} tried, closest so far: ${best ? best.score : '–'}`);
+    // yield to the browser so the UI (and this status text) can update
+    await new Promise(res => setTimeout(res, 0));
+  }
+  return {cand: best, attempts, matched: bestDiff <= tol};
+}
+
+function setDifficultyStatus(text, isWarn){
+  const el = document.getElementById('difficultyStatus');
+  el.textContent = text;
+  el.classList.toggle('warn', !!isWarn);
+}
+
+let shareStatusClearTimer = null;
+
+function setShareStatus(text, isWarn){
+  const el = document.getElementById('shareStatus');
+  el.textContent = text;
+  el.classList.toggle('warn', !!isWarn);
+  clearTimeout(shareStatusClearTimer);
+  if(text){
+    shareStatusClearTimer = setTimeout(() => {
+      el.textContent = '';
+      el.classList.remove('warn');
+    }, 2500);
+  }
+}
+
+async function copyTextToClipboard(text){
+  if(navigator.clipboard?.writeText){
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if(!copied){
+    throw new Error('Clipboard copy failed');
+  }
+}
+
+async function shareBoardStateUrl(){
+  updateBoardStateUrl();
+  const url = window.location.href;
+  try{
+    await copyTextToClipboard(url);
+    setShareStatus('Realm link copied.');
+  } catch {
+    setShareStatus('Could not copy the realm link.', true);
+  }
+}
+
+async function onFindDifficultyClick(){
+  const input = document.getElementById('difficultyInput');
+  const btn = document.getElementById('findDifficultyBtn');
+  const target = parseInt(input.value, 10);
+  if(!target || target < 1){
+    setDifficultyStatus('Enter a target realm difficulty first.', true);
+    return;
+  }
+  btn.disabled = true;
+  input.disabled = true;
+  setDifficultyStatus('Searching realms…');
+
+  const {cand, attempts, matched} = await findPuzzleForDifficulty(target);
+
+  btn.disabled = false;
+  input.disabled = false;
+
+  if(!cand){
+    setDifficultyStatus("Couldn't generate a realm in time — try again.", true);
+    return;
+  }
+
+  applyBoardState(cand);
+  const tierNote = TIER_LABELS[cand.tier];
+
+  if(matched){
+    setDifficultyStatus(`Found realm difficulty ${cand.score} (${tierNote}) — within 10% of ${target}, ${attempts.toLocaleString()} tried.`);
+  } else {
+    const pctOff = Math.round(Math.abs(cand.score-target)/target*100);
+    setDifficultyStatus(`Closest realm after ${attempts.toLocaleString()} tries: ${cand.score} (${tierNote}), ${pctOff}% off ${target}.`, true);
+  }
+}
+
+function resetBoardState(){
+  boardState.cells = Array.from({length:N}, ()=> new Array(N).fill(0));
+  syncBoardStateRefs();
+  refreshBoardStateKnowledge();
+  currentDifficulty = null;
+  currentTier = null;
+  mistakes = 0; solved = false;
+  seconds = 0; started = false;
+  clearInterval(timerInterval);
+  updateStats();
+  setTacticStatus('');
+  renderBoard();
+  runEnabledTacticsContinuous({statusIfNoProgress:false});
+}
+
+function setTacticStatus(text, isWarn){
+  const el = document.getElementById('tacticStatus');
+  el.textContent = text;
+  el.classList.toggle('warn', !!isWarn);
+}
+
+function createTacticContextFromBoardState(){
+  const possible = Array.from({ length: N }, () => new Array(N).fill(true));
+  const crowns = Array.from({ length: N }, () => new Array(N).fill(false));
+  const rowDone = new Array(N).fill(false);
+  const colDone = new Array(N).fill(false);
+  const regionDone = new Array(N).fill(false);
+  let score = 0;
+  let maxTier = 0;
+
+  function eliminateForQueen(r, c){
+    const reg = regionOf[r][c];
+    for(let i = 0; i < N; i++){
+      possible[r][i] = false;
+      possible[i][c] = false;
+    }
+    for(let rr = 0; rr < N; rr++) for(let cc = 0; cc < N; cc++){
+      if(regionOf[rr][cc] === reg) possible[rr][cc] = false;
+    }
+    for(let dr = -1; dr <= 1; dr++) for(let dc = -1; dc <= 1; dc++){
+      const nr = r + dr;
+      const nc = c + dc;
+      if(nr >= 0 && nr < N && nc >= 0 && nc < N) possible[nr][nc] = false;
+    }
+    rowDone[r] = true;
+    colDone[c] = true;
+    regionDone[reg] = true;
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 1) possible[r][c] = false;
+    }
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(cellState[r][c] === 2){
+        crowns[r][c] = true;
+      }
+    }
+  }
+
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(crowns[r][c]) eliminateForQueen(r, c);
+    }
+  }
+
+  function candidatesInRow(r){ const a = []; for(let c = 0; c < N; c++) if(possible[r][c]) a.push(c); return a; }
+  function candidatesInCol(c){ const a = []; for(let r = 0; r < N; r++) if(possible[r][c]) a.push(r); return a; }
+  function candidatesInRegion(reg){
+    const a = [];
+    for(let r = 0; r < N; r++) for(let c = 0; c < N; c++) if(regionOf[r][c] === reg && possible[r][c]) a.push({ r, c });
+    return a;
+  }
+
+  function placeQueen(r, c, tier){
+    if(crowns[r][c]) return;
+    crowns[r][c] = true;
+    eliminateForQueen(r, c);
+    score += (tier === 1 ? 1 : 0);
+    if(tier > maxTier) maxTier = tier;
+  }
+
+  return {
+    n: N,
+    region: regionOf,
+    possible,
+    crowns,
+    rowDone,
+    colDone,
+    regionDone,
+    candidatesInRow,
+    candidatesInCol,
+    candidatesInRegion,
+    placeQueen,
+    getScore: () => score,
+    setScore: (next) => { score = next; },
+    getMaxTier: () => maxTier,
+    setMaxTier: (next) => { maxTier = next; }
+  };
+}
+
+function syncBoardStateFromContext(ctx){
+  for(let r = 0; r < N; r++){
+    for(let c = 0; c < N; c++){
+      if(ctx.crowns[r][c]){
+        cellState[r][c] = 2;
+      } else if(!ctx.possible[r][c]){
+        cellState[r][c] = 1;
+      } else {
+        cellState[r][c] = 0;
+      }
+    }
+  }
+  refreshBoardStateKnowledge();
+  updateBoardStateUrl();
+}
+
+function applyTacticToBoard(tacticId, options = {}){
+  const {silentNoProgress = false} = options;
+  if(solved){
+    if(!silentNoProgress) setTacticStatus('Realm already solved. Start a new realm to apply tactics.', true);
+    return false;
+  }
+  const tactic = getTacticById(tacticId);
+  if(!tactic){
+    if(!silentNoProgress) setTacticStatus('Unknown tactic selection.', true);
+    return false;
+  }
+
+  const ctx = createTacticContextFromBoardState();
+  const progressed = tactic.apply(ctx);
+
+  if(!progressed){
+    if(!silentNoProgress) setTacticStatus(`${tactic.label} found no deterministic move on this realm.`, true);
+    return false;
+  }
+
+  startTimerIfNeeded();
+  syncBoardStateFromContext(ctx);
+
+  updateStats();
+  renderBoard();
+  checkBoardStateWin();
+  setTacticStatus(`Applied ${tactic.label}.`);
+  return true;
+}
+
+function getEnabledTacticIds(){
+  const checks = document.querySelectorAll('.assist-checkbox:checked');
+  return Array.from(checks).map((el) => el.dataset.tacticId);
+}
+
+function runEnabledTacticsContinuous(options = {}){
+  const {statusIfNoProgress = false} = options;
+  if(solved) return;
+
+  const enabled = getEnabledTacticIds();
+  if(enabled.length === 0) return;
+
+  const MAX_PASSES = 24;
+  let totalApplied = 0;
+
+  for(let pass = 0; pass < MAX_PASSES; pass++){
+    let passProgressed = false;
+    for(const tacticId of enabled){
+      const progressed = applyTacticToBoard(tacticId, {silentNoProgress:true});
+      if(progressed){
+        passProgressed = true;
+        totalApplied++;
+      }
+      if(solved) break;
+    }
+    if(!passProgressed || solved) break;
+  }
+
+  if(totalApplied > 0){
+    setTacticStatus(`Auto-applied ${totalApplied} realm tactic step${totalApplied===1?'':'s'}.`);
+  } else if(statusIfNoProgress){
+    setTacticStatus('Enabled auto tactics found no deterministic move in the current realm.', true);
+  }
+}
+
+function openTacticStory(tacticId){
+  const tactic = getTacticById(tacticId);
+  if(!tactic) return;
+  const query = STORYBOOK_TACTIC_QUERIES[tactic.id] || STORYBOOK_DEFAULT_QUERY;
+  const url = storybookUrlForPath(query);
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+function updateStats(){
+  const m = Math.floor(seconds/60), s = seconds%60;
+  document.getElementById('timer').textContent = m+':'+String(s).padStart(2,'0');
+  document.getElementById('mistakes').textContent = mistakes;
+  document.getElementById('difficultyScore').textContent = currentDifficulty ?? '–';
+  const chip = document.getElementById('difficultyScore').closest('.chip');
+  if(chip) chip.title = currentTier ? `Realm difficulty ${currentDifficulty} — ${TIER_LABELS[currentTier]}` : '';
+}
+
+function startTimerIfNeeded(){
+  if(started) return;
+  started = true;
+  timerInterval = setInterval(()=>{
+    seconds++;
+    updateStats();
+  }, 1000);
+}
+
+function getBoardStateConflicts(){
+  const conflicts = new Set();
+  const kings = Array.from(boardState.knownKings, (key) => {
+    const [r, c] = key.split(',').map(Number);
+    return { r, c };
+  });
+
+  const rowCount={}, colCount={}, regCount={};
+  kings.forEach(q=>{
+    rowCount[q.r]=(rowCount[q.r]||0)+1;
+    colCount[q.c]=(colCount[q.c]||0)+1;
+    const rg = regionOf[q.r][q.c];
+    regCount[rg]=(regCount[rg]||0)+1;
+  });
+  kings.forEach(q=>{
+    const rg = regionOf[q.r][q.c];
+    if(rowCount[q.r]>1 || colCount[q.c]>1 || regCount[rg]>1){
+      conflicts.add(q.r+','+q.c);
+    }
+  });
+  for(let i=0;i<kings.length;i++){
+    for(let j=i+1;j<kings.length;j++){
+      const a=kings[i], b=kings[j];
+      if(Math.abs(a.r-b.r)<=1 && Math.abs(a.c-b.c)<=1){
+        conflicts.add(a.r+','+a.c);
+        conflicts.add(b.r+','+b.c);
+      }
+    }
+  }
+  return {conflicts, kingCount: kings.length};
+}
+
+function checkBoardStateWin(){
+  const {conflicts, kingCount} = getBoardStateConflicts();
+  if(kingCount === N && conflicts.size === 0){
+    solved = true;
+    clearInterval(timerInterval);
+    const m = Math.floor(seconds/60), s = seconds%60;
+    document.getElementById('winStats').textContent = `realm solved in ${m}:${String(s).padStart(2,'0')} · ${mistakes} mistake${mistakes===1?'':'s'}`;
+    document.getElementById('winBanner').classList.add('show');
+  }
+}
+
+function computeKnownAbsence(){
+  return boardState.knownAbsence;
+}
+
+function renderBoard(){
+  const board = document.getElementById('board');
+  board.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  board.style.gridTemplateRows = `repeat(${N}, 1fr)`;
+  board.innerHTML = '';
+
+  const {conflicts} = getBoardStateConflicts();
+  const knownAbsence = computeKnownAbsence();
+
+  for(let r=0;r<N;r++){
+    for(let c=0;c<N;c++){
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.style.background = regionColor(regionOf[r][c]);
+      div.style.opacity = 0.85;
+      applyRegionBorders(div, r, c, N, (row, col) => regionOf[row][col]);
+
+      const key = r+','+c;
+      if(boardState.knownKings.has(key)){
+        div.innerHTML = crownSVGMarkup();
+        if(conflicts.has(key)) div.classList.add('conflict');
+      } else if(knownAbsence.has(key)){
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        div.appendChild(dot);
+      }
+
+      div.addEventListener('click', ()=> onCellClick(r,c));
+      board.appendChild(div);
+    }
+  }
+}
+
+function onCellClick(r,c){
+  if(solved) return;
+  startTimerIfNeeded();
+  cellState[r][c] = (cellState[r][c] + 1) % 3;
+
+  if(cellState[r][c] === 2){
+   refreshBoardStateKnowledge();
+   const after = getBoardStateConflicts().conflicts;
+   const key = r+','+c;
+   if(after.has(key)) mistakes++;
+  } else {
+   refreshBoardStateKnowledge();
+  }
+  updateBoardStateUrl();
+  updateStats();
+  renderBoard();
+  checkBoardStateWin();
+  runEnabledTacticsContinuous();
+}
+
+function showBoardStateHint(){
+  if(solved) return;
+  for(let r=0;r<N;r++){
+    if(cellState[r][solution[r]] !== 2){
+      renderBoard();
+      const board = document.getElementById('board');
+      const idx = r*N + solution[r];
+      const target = board.children[idx];
+      target.classList.add('hint');
+      setTimeout(()=> target.classList.remove('hint'), 3600);
+      return;
+    }
+  }
+}
+
+function openBoardStateConfigFromWin(){
+  document.getElementById('winBanner').classList.remove('show');
+  const panel = document.querySelector('.difficulty-panel');
+  panel?.scrollIntoView({ behavior:'smooth', block:'center' });
+  document.getElementById('difficultyInput')?.focus();
+}
+
+function initializeBoardStateFromUrl(){
+  const { snapshot, invalid } = loadBoardStateFromUrl();
+  if(snapshot){
+    applyBoardState(snapshot, { runEnabledTactics: false });
+    setDifficultyStatus('Loaded realm from URL.');
+    return;
+  }
+
+  newBoardState();
+  if(invalid){
+    setDifficultyStatus('Invalid realm link — started a new realm instead.', true);
+  }
+}
+
+document.getElementById('newGameBtn').addEventListener('click', newBoardState);
+document.getElementById('resetBtn').addEventListener('click', resetBoardState);
+document.getElementById('hintBtn').addEventListener('click', showBoardStateHint);
+document.getElementById('shareBtn').addEventListener('click', shareBoardStateUrl);
+document.getElementById('playAgainBtn').addEventListener('click', newBoardState);
+document.getElementById('changeConfigBtn').addEventListener('click', openBoardStateConfigFromWin);
+document.getElementById('findDifficultyBtn').addEventListener('click', onFindDifficultyClick);
+document.getElementById('difficultyInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') onFindDifficultyClick();
+});
+document.getElementById('tacticsList').addEventListener('click', (e)=>{
+  const applyBtn = e.target.closest('.tactic-apply-btn');
+  if(applyBtn){
+    applyTacticToBoard(applyBtn.dataset.tacticId);
+    return;
+  }
+
+  const storyBtn = e.target.closest('.tactic-story-btn');
+  if(storyBtn){
+    openTacticStory(storyBtn.dataset.tacticId);
+  }
+});
+
+document.getElementById('tacticsList').addEventListener('change', (e)=>{
+  if(e.target.classList.contains('tactic-weight-input')){
+    const tacticId = e.target.dataset.tacticId;
+    const observedRegions = Number(e.target.dataset.observedRegions || '1');
+    const next = parseInt(e.target.value, 10);
+    if(Number.isFinite(next) && next >= 0){
+      setDisplayedWeight(tacticId, observedRegions, next);
+      setDifficultyStatus('Board-state difficulty weights updated. New generated boards use the new scoring.');
+    } else {
+      refreshWeightInputs();
+      setTacticStatus('Weight must be a non-negative integer.', true);
+    }
+    return;
+  }
+  if(e.target.classList.contains('assist-checkbox')){
+    runEnabledTacticsContinuous({statusIfNoProgress:true});
+  }
+});
+
+document.getElementById('resetWeightsBtn').addEventListener('click', ()=>{
+  difficultyWeights = normalizeDifficultyWeights(DEFAULT_DIFFICULTY_WEIGHTS);
+  saveDifficultyWeights();
+  refreshWeightInputs();
+  setDifficultyStatus('Board-state difficulty weights reset to defaults.');
+});
+document.getElementById('rulesToggle').addEventListener('click', ()=>{
+  document.getElementById('rules').classList.toggle('open');
+});
+
+buildTacticControls();
+refreshWeightInputs();
+wireStorybookLinks();
+initializeBoardStateFromUrl();
+</script>
+</body>
+</html>
