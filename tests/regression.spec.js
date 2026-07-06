@@ -79,3 +79,63 @@ test('ui core loop smoke test', async ({ page }) => {
   await page.getByRole('button', { name: 'Clear' }).click();
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(0);
 });
+
+test('subset tactic catches line-to-region subset eliminations', async ({ page }) => {
+  await page.goto('/');
+
+  const result = await page.evaluate(async () => {
+    const mod = await import('./js/deterministic-tactics.js');
+
+    const n = 4;
+    const region = [
+      [0, 1, 2, 3],
+      [0, 1, 2, 3],
+      [0, 1, 2, 3],
+      [0, 1, 2, 3]
+    ];
+
+    const possible = [
+      [true, true, false, false],
+      [true, true, false, false],
+      [true, true, true, true],
+      [true, true, true, true]
+    ];
+
+    const rowDone = [false, false, false, false];
+    const colDone = [false, false, false, false];
+    const regionDone = [false, false, false, false];
+
+    function candidatesInRegion(reg) {
+      const a = [];
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          if (region[r][c] === reg && possible[r][c]) a.push({ r, c });
+        }
+      }
+      return a;
+    }
+
+    const state = {
+      n,
+      region,
+      possible,
+      rowDone,
+      colDone,
+      regionDone,
+      candidatesInRegion,
+      setLastObservedRegions: () => {}
+    };
+
+    const changed = mod.trySubsets(state);
+
+    return {
+      changed,
+      removedOutsideRowsForRegion0: !possible[2][0] && !possible[3][0],
+      removedOutsideRowsForRegion1: !possible[2][1] && !possible[3][1]
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.removedOutsideRowsForRegion0, JSON.stringify(result)).toBeTruthy();
+  expect(result.removedOutsideRowsForRegion1, JSON.stringify(result)).toBeTruthy();
+});

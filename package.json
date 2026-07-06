@@ -6,17 +6,22 @@
   "scripts": {
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
+    "sync:storybook:site": "npm run build-storybook && rm -rf _site/stories && mkdir -p _site/stories && cp -R storybook-static/. _site/stories/",
+    "watch:storybook:site": "chokidar \"stories/**/*.js\" \"stories/**/*.html\" \".storybook/**/*\" \"js/deterministic-tactics.js\" -c \"npm run sync:storybook:site\" --initial",
     "examples:deterministic": "node --experimental-default-type=module scripts/discover-deterministic-examples.mjs",
-    "build:site": "npm run build-storybook && rm -rf _site && mkdir -p _site _site/js _site/stories && cp index.html _site/index.html && cp styles.css _site/styles.css && cp -R js/. _site/js/ && cp -R storybook-static/. _site/stories/ && touch _site/.nojekyll",
+    "build:site:base": "rm -rf _site && mkdir -p _site _site/js _site/stories && cp index.html _site/index.html && cp styles.css _site/styles.css && cp -R js/. _site/js/ && touch _site/.nojekyll",
+    "build:site": "npm run build:site:base && npm run build-storybook && cp -R storybook-static/. _site/stories/",
     "serve:site": "npm run build:site && python3 -m http.server 8080 --directory _site",
+    "dev:stories:site": "npm run build:site:base && npm run watch:storybook:site",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui"
   },
   "devDependencies": {
-    "@storybook/addon-essentials": "^8.6.14",
     "@playwright/test": "^1.54.0",
+    "@storybook/addon-essentials": "^8.6.14",
     "@storybook/html-vite": "^8.6.14",
+    "chokidar-cli": "^3.0.0",
     "storybook": "^8.6.14"
   }
 }

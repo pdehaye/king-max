@@ -11,7 +11,7 @@ const rootDir = path.resolve(__dirname, '..');
 const outFile = path.join(rootDir, 'stories/generated/deterministic-examples.generated.js');
 
 const TARGET_PER_TACTIC = 10;
-const MAX_PUZZLE_ATTEMPTS = 6000;
+const MAX_PUZZLE_ATTEMPTS = 120000;
 
 function cloneMatrix(matrix) {
   return matrix.map((row) => row.slice());
@@ -156,6 +156,11 @@ function meetsQualityThreshold(id, metrics) {
   if (id === 'hidden-singles') return metrics.crownDelta >= 1;
   if (id === 'locked-candidates') return metrics.eliminatedCandidates >= 2;
   if (id === 'subsets') return metrics.eliminatedCandidates >= 3;
+  if (id === 'excluded-neighbour-twins') return metrics.eliminatedCandidates >= 1;
+  if (id === 'excluded-neighbour-two') return metrics.eliminatedCandidates >= 1;
+  if (id === 'excluded-neighbour-three') return metrics.eliminatedCandidates >= 1;
+  if (id === 'excluded-neighbour-four') return metrics.eliminatedCandidates >= 1;
+  if (id === 'coupled-region-pairs-two') return metrics.eliminatedCandidates >= 1;
   return metrics.eliminatedCandidates + metrics.crownDelta > 0;
 }
 

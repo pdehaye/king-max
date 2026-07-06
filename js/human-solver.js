@@ -1,4 +1,30 @@
-import { DETERMINISTIC_TACTICS } from './deterministic-tactics.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './deterministic-tactics.js';
+
+const ONE_REGION_DIFFICULTY_ORDER = [
+  'hidden-singles',
+  'locked-candidates',
+  'excluded-neighbour-twins',
+  'excluded-neighbour-two',
+  'excluded-neighbour-three',
+  'excluded-neighbour-four'
+];
+
+function scoreForDeterministicStep(tacticId, observedRegions) {
+  if (observedRegions <= 1) {
+    const idx = ONE_REGION_DIFFICULTY_ORDER.indexOf(tacticId);
+    return idx >= 0 ? idx + 1 : 9;
+  }
+  if (observedRegions === 2) return 25;
+  if (observedRegions === 3) return 40;
+  if (observedRegions === 4) return 85;
+  return 100;
+}
+
+function tierForDeterministicStep(tacticId, observedRegions) {
+  if (tacticId === 'hidden-singles') return 1;
+  if (observedRegions <= 1) return 2;
+  return 3;
+}
 
 export function humanSolve(n, region) {
   let possible = Array.from({ length: n }, () => new Array(n).fill(true));
@@ -8,6 +34,7 @@ export function humanSolve(n, region) {
   let regionDone = new Array(n).fill(false);
   let score = 0;
   let maxTier = 0;
+  let lastObservedRegions = null;
 
   function candidatesInRow(r) { const a = []; for (let c = 0; c < n; c++) if (possible[r][c]) a.push(c); return a; }
   function candidatesInCol(c) { const a = []; for (let r = 0; r < n; r++) if (possible[r][c]) a.push(r); return a; }
@@ -33,8 +60,6 @@ export function humanSolve(n, region) {
   function placeQueen(r, c, tier) {
     placedCount++;
     eliminateForQueen(r, c);
-    score += (tier === 1 ? 1 : 0);
-    if (tier > maxTier) maxTier = tier;
   }
 
   const ctx = {
@@ -51,15 +76,22 @@ export function humanSolve(n, region) {
     getScore: () => score,
     setScore: (next) => { score = next; },
     getMaxTier: () => maxTier,
-    setMaxTier: (next) => { maxTier = next; }
+    setMaxTier: (next) => { maxTier = next; },
+    setLastObservedRegions: (next) => { lastObservedRegions = next; },
+    getLastObservedRegions: () => lastObservedRegions
   };
 
   function propagate() {
     let changed = true;
     while (changed) {
       changed = false;
-      for (const tactic of DETERMINISTIC_TACTICS) {
-        if (tactic(ctx)) {
+      for (const tactic of DETERMINISTIC_TACTIC_DESCRIPTORS) {
+        lastObservedRegions = null;
+        if (tactic.apply(ctx)) {
+          const observedRegions = lastObservedRegions ?? tactic.regionsObserved?.min ?? 1;
+          score += scoreForDeterministicStep(tactic.id, observedRegions);
+          const stepTier = tierForDeterministicStep(tactic.id, observedRegions);
+          if (stepTier > maxTier) maxTier = stepTier;
           changed = true;
           break;
         }
@@ -92,7 +124,7 @@ export function humanSolve(n, region) {
     }
     if (bestRow === -1 || bestCands.length === 0) return false;
     if (maxTier < 4) maxTier = 4;
-    score += 60;
+    score += 200;
     for (const c of bestCands) {
       const snap = snapshot();
       placeQueen(bestRow, c, 4);
@@ -100,7 +132,6 @@ export function humanSolve(n, region) {
       if (!isContradiction() && guessAndCheck()) return true;
       restore(snap);
       possible[bestRow][c] = false;
-      score += 20;
     }
     return false;
   }

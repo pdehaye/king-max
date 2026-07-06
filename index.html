@@ -79,7 +79,7 @@
   <footer class="hint-toggle">
     <a id="rulesToggle">How to play</a>
     <span aria-hidden="true"> · </span>
-    <a href="./stories/?path=/story/index.html" target="_blank" rel="noopener noreferrer">Tactical stories</a>
+    <a id="tacticalStoriesLink" href="./stories/?path=/docs/strategy-deterministic-tactics--docs" target="_blank" rel="noopener noreferrer">Tactical stories</a>
   </footer>
 </div>
 
@@ -99,11 +99,19 @@ import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzl
 import { applyRegionBorders, crownSVGMarkup, regionColor } from './js/board-visuals.js';
 import { DETERMINISTIC_TACTIC_DESCRIPTORS } from './js/deterministic-tactics.js';
 
-const STORYBOOK_TACTIC_PATHS = {
-  'hidden-singles': './stories/?path=/story/strategy-deterministic-tactics--hidden-singles',
-  'locked-candidates': './stories/?path=/story/strategy-deterministic-tactics--locked-candidates',
-  subsets: './stories/?path=/story/strategy-deterministic-tactics--subsets'
+const STORYBOOK_TACTIC_QUERIES = {
+  'hidden-singles': '/story/strategy-deterministic-tactics--hidden-singles',
+  'locked-candidates': '/story/strategy-deterministic-tactics--locked-candidates',
+  subsets: '/story/strategy-deterministic-tactics--subsets',
+  'excluded-neighbour-twins': '/story/strategy-deterministic-tactics--excluded-neighbour-twins',
+  'excluded-neighbour-two': '/story/strategy-deterministic-tactics--excluded-neighbour-two',
+  'excluded-neighbour-three': '/story/strategy-deterministic-tactics--excluded-neighbour-three',
+  'excluded-neighbour-four': '/story/strategy-deterministic-tactics--excluded-neighbour-four',
+  'coupled-region-pairs-two': '/story/strategy-deterministic-tactics--coupled-regions-2x2'
 };
+
+const STORYBOOK_DEFAULT_QUERY = '/story/strategy-deterministic-tactics--direct-links';
+const STORYBOOK_DOCS_QUERY = '/docs/strategy-deterministic-tactics--docs';
 
 let regionOf = [];      // n x n region ids
 let cellState = [];     // n x n : 0 empty, 1 dot, 2 crown
@@ -118,6 +126,24 @@ let currentTier = null;
 
 function getTacticById(tacticId){
   return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
+}
+
+function getStorybookBaseUrl(){
+  if(window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if(window.location.port === '6006') return './';
+  if(isLocalhost) return './stories/';
+  return './stories/';
+}
+
+function storybookUrlForPath(path){
+  return `${getStorybookBaseUrl()}?path=${path}`;
+}
+
+function wireStorybookLinks(){
+  const link = document.getElementById('tacticalStoriesLink');
+  if(!link) return;
+  link.href = storybookUrlForPath(STORYBOOK_DOCS_QUERY);
 }
 
 function buildTacticControls(){
@@ -435,7 +461,8 @@ function runEnabledTacticsContinuous(options = {}){
 function openTacticStory(tacticId){
   const tactic = getTacticById(tacticId);
   if(!tactic) return;
-  const url = STORYBOOK_TACTIC_PATHS[tactic.id] || './stories/?path=/story/strategy-deterministic-tactics--direct-links';
+  const query = STORYBOOK_TACTIC_QUERIES[tactic.id] || STORYBOOK_DEFAULT_QUERY;
+  const url = storybookUrlForPath(query);
   window.open(url, '_blank', 'noopener,noreferrer');
 }
 
@@ -621,6 +648,7 @@ document.getElementById('rulesToggle').addEventListener('click', ()=>{
 });
 
 buildTacticControls();
+wireStorybookLinks();
 newPuzzle();
 </script>
 </body>
