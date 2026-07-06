@@ -93,7 +93,7 @@ test('ui core loop smoke test', async ({ page }) => {
 
   const cells = page.locator('#board .cell');
   await expect(cells).toHaveCount(64);
-  await expect(page.getByLabel('Target board state difficulty')).toBeVisible();
+  await expect(page.getByLabel('Target realm difficulty')).toBeVisible();
 
   const firstCell = cells.nth(0);
 
@@ -107,14 +107,14 @@ test('ui core loop smoke test', async ({ page }) => {
   await expect(firstCell.locator('.dot')).toHaveCount(0);
   await expect(firstCell.locator('svg.crown')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'New board state' }).click();
+  await page.getByRole('button', { name: 'New realm' }).click();
   await expect(cells).toHaveCount(64);
 
   await cells.nth(1).click();
   await cells.nth(1).click();
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(1);
 
-  await page.getByRole('button', { name: 'Clear board state' }).click();
+  await page.getByRole('button', { name: 'Clear realm' }).click();
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(0);
 });
 
@@ -162,7 +162,7 @@ test('win banner appears after solving a board state', async ({ page }) => {
   }
 
   await expect(page.locator('#winBanner')).toHaveClass(/show/);
-  await expect(page.locator('#winStats')).toContainText('board state solved in');
+  await expect(page.locator('#winStats')).toContainText('realm solved in');
 });
 
 test('subset tactic catches line-to-region subset eliminations', async ({ page }) => {
