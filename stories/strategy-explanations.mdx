@@ -1,0 +1,57 @@
+import { Meta, Canvas, Story } from '@storybook/blocks';
+import * as StrategyStories from './strategy-demo.stories';
+import * as RegionStories from './region-elimination.stories';
+import * as EndgameStories from './endgame-narrowing.stories';
+
+<Meta title="Strategy/Explanations" />
+
+# Queens Strategy Snippets
+
+Use this page to explain one tactical idea at a time instead of requiring users to play a full game state.
+
+## 1. Crowns Block Touching Cells
+
+A crown blocks all eight neighboring cells. This is often the first elimination wave to apply before row/column reasoning.
+
+<Canvas>
+  <Story of={StrategyStories.CrownBlocksNeighbors} />
+</Canvas>
+
+## 2. Dot vs Crown Meaning
+
+- Dot: provisional rejection, useful to keep track of eliminations.
+- Crown: committed placement that updates row, column, region, and touching constraints.
+
+<Canvas>
+  <Story of={StrategyStories.DotVsCrownCycle} />
+</Canvas>
+
+## Teaching Notes
+
+- Introduce one rule per snippet.
+- Keep captions short and concrete.
+- Pair each snippet with one sentence that describes the decision the player should make.
+
+## 3. Region Elimination Walkthrough
+
+Teach the moment where a region collapses to one legal tile and how that placement propagates constraints.
+
+<Canvas>
+  <Story of={RegionStories.RegionCandidateCollapse} />
+</Canvas>
+
+<Canvas>
+  <Story of={RegionStories.RegionEliminationAfterPlacement} />
+</Canvas>
+
+## 4. Endgame Candidate Narrowing
+
+Use fixed near-complete snapshots to demonstrate late-game narrowing without noise from earlier setup.
+
+<Canvas>
+  <Story of={EndgameStories.TwoCandidateRows} />
+</Canvas>
+
+<Canvas>
+  <Story of={EndgameStories.FinalCommit} />
+</Canvas>

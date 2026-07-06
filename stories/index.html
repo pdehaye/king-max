@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>King Max Stories (Local)</title>
+<style>
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3ecdb;
+    color: #2b2420;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    padding: 20px;
+  }
+
+  .card {
+    max-width: 640px;
+    background: #fbf8f0;
+    border: 1px solid #d9cfb4;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 8px 24px rgba(43, 36, 32, 0.08);
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    line-height: 1.2;
+  }
+
+  p {
+    margin: 8px 0;
+    line-height: 1.5;
+  }
+
+  code {
+    background: #eae1cb;
+    border-radius: 6px;
+    padding: 2px 6px;
+  }
+
+  .links {
+    margin-top: 14px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  a {
+    display: inline-block;
+    text-decoration: none;
+    background: #2b2420;
+    color: #f3ecdb;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-weight: 600;
+  }
+
+  a.alt {
+    background: #2f5d62;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Stories Need a Local Server</h1>
+    <p>
+      This folder contains Storybook source files, not a directly viewable static page.
+      To browse stories exactly as they are served by the website, run <code>npm run serve:site</code>
+      and open <code>http://localhost:8080/stories/</code>.
+    </p>
+    <p>
+      If you already built Storybook with <code>npm run build-storybook</code>, you can open the static output from
+      <code>../storybook-static/</code> using an HTTP server.
+    </p>
+
+    <div class="links">
+      <a href="http://localhost:8080/stories/" target="_blank" rel="noopener noreferrer">Open Website Stories (localhost:8080/stories/)</a>
+      <a href="http://localhost:6006/" target="_blank" rel="noopener noreferrer">Open Storybook Dev (localhost:6006)</a>
+      <a class="alt" href="../storybook-static/index.html" target="_blank" rel="noopener noreferrer">Open Built Storybook File</a>
+    </div>
+  </div>
+</body>
+</html>

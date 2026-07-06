@@ -1,0 +1,80 @@
+import { Meta, Canvas, Story } from '@storybook/blocks';
+import * as StrategyStories from './strategy-demo.stories';
+import * as RegionStories from './region-elimination.stories';
+import * as EndgameStories from './endgame-narrowing.stories';
+
+<Meta title="Strategy/Lesson Flow" />
+
+# Queens Lesson Flow
+
+Use this page as a progressive teaching path from basic constraints to endgame commitment.
+
+## Beginner: Touching Rule First
+
+Start by teaching the most local constraint. Once players internalize touching exclusions, later eliminations feel natural.
+
+<Canvas>
+  <Story of={StrategyStories.CrownBlocksNeighbors} />
+</Canvas>
+
+### What to look for
+
+- Every adjacent cell (including diagonals) becomes unavailable.
+- This is true regardless of row, column, or region shape.
+- The touching rule is often the fastest first pass.
+
+## Beginner-Intermediate: Dot Versus Crown
+
+Teach notation discipline early so players can reason without losing state.
+
+<Canvas>
+  <Story of={StrategyStories.DotVsCrownCycle} />
+</Canvas>
+
+### What to look for
+
+- Dot means provisional rejection, not final commitment.
+- Crown means committed placement and immediate propagation.
+- Good notation reduces repeated scanning.
+
+## Intermediate: Region Elimination
+
+Show how a region can collapse to one legal tile and force a placement.
+
+<Canvas>
+  <Story of={RegionStories.RegionCandidateCollapse} />
+</Canvas>
+
+<Canvas>
+  <Story of={RegionStories.RegionEliminationAfterPlacement} />
+</Canvas>
+
+### What to look for
+
+- Count remaining legal tiles inside a region.
+- A forced region placement should trigger row and column pruning.
+- Re-check nearby regions immediately after propagation.
+
+## Endgame: Candidate Narrowing
+
+When only a few rows or columns remain unresolved, compare candidates directly.
+
+<Canvas>
+  <Story of={EndgameStories.TwoCandidateRows} />
+</Canvas>
+
+<Canvas>
+  <Story of={EndgameStories.FinalCommit} />
+</Canvas>
+
+### What to look for
+
+- Identify unresolved rows with only two candidates.
+- Use shared columns and touching constraints to eliminate one branch.
+- Commit the final legal pair and verify no conflicts remain.
+
+## Suggested Coaching Script
+
+- Ask the learner what changed after each crown.
+- Require a short reason before each commitment.
+- End each section with one transferable heuristic.
