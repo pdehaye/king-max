@@ -19,7 +19,7 @@ This repository is a static GitHub Pages site for a multi games hub, and the und
 - Keep accessibility in mind: semantic controls, readable contrast, and keyboard-friendly interactions where practical.
 - Prefer plain JavaScript and CSS patterns that are easy to maintain in one-file deployment.
 - Add or update a regression scenario whenever fixing a bug.
-- Keep deterministic strategy documentation aligned: one Storybook story per tactic in `js/king-max/deterministic-tactics.js` when tactic modules exist.
+- Keep deterministic strategy documentation aligned: one Storybook story per tactic in `games/king-max/js/deterministic-tactics.js` when tactic modules exist.
 
 ## GitHub Pages Constraints
 - Use relative links and static assets.

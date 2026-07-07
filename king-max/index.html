@@ -131,16 +131,16 @@
 </div>
 
 <script type="module">
-import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from '../js/king-max/puzzle-logic.js';
-import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/king-max/board-visuals.js';
-import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/king-max/deterministic-tactics.js';
-import { humanSolve } from '../js/king-max/human-solver.js';
-import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
+import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from '../games/king-max/js/puzzle-logic.js';
+import { applyRegionBorders, crownSVGMarkup, regionColor } from '../games/king-max/js/board-visuals.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../games/king-max/js/deterministic-tactics.js';
+import { humanSolve } from '../games/king-max/js/human-solver.js';
+import { renderAnnotationOverlay, clearAnnotationOverlay } from '../generic/annotations/annotation-renderer.js';
 import {
   DEFAULT_DIFFICULTY_WEIGHTS,
   deterministicStepWeight,
   normalizeDifficultyWeights
-} from '../js/king-max/difficulty-weights.js';
+} from '../games/king-max/js/difficulty-weights.js';
 
 const STORYBOOK_TACTIC_QUERIES = {
   'hidden-singles': '/story/strategy-deterministic-tactics--hidden-singles',

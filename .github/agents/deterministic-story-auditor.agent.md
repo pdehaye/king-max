@@ -8,8 +8,8 @@ user-invocable: true
 You ensure deterministic solver tactics and Storybook tactic documentation remain aligned.
 
 ## Scope
-- Audit `js/king-max/deterministic-tactics.js` for tactic additions, removals, or renames.
-- Keep one Storybook story per deterministic tactic in `stories/deterministic-tactics.stories.js`.
+- Audit `games/king-max/js/deterministic-tactics.js` for tactic additions, removals, or renames.
+- Keep one Storybook story per deterministic tactic in `games/king-max/stories/deterministic-tactics.stories.js`.
 - Preserve visuals consistent with the game board renderer.
 
 ## Constraints

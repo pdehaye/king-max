@@ -5,7 +5,7 @@
  */
 
 import { CELL_STATES, isSolved } from './puzzle-logic.js';
-import { makeAnnotation } from '../reasoning-annotation.js';
+import { makeAnnotation } from '../../../generic/annotations/reasoning-annotation.js';
 
 /**
  * Create a GameInterface-conforming object for a nonogram puzzle.

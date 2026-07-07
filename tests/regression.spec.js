@@ -37,11 +37,11 @@ function solveRegionMap(regionMap) {
   return placement;
 }
 
-test('puzzle logic module invariants stay valid', async ({ page }) => {
+test('[king-max] puzzle logic module invariants stay valid', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('../js/king-max/puzzle-logic.js');
+    const mod = await import('../games/king-max/js/puzzle-logic.js');
     const n = mod.BOARD_SIZE;
 
     function isValidSolution(sol) {
@@ -88,7 +88,7 @@ test('puzzle logic module invariants stay valid', async ({ page }) => {
   expect(result.ok, JSON.stringify(result)).toBeTruthy();
 });
 
-test('ui core loop smoke test', async ({ page }) => {
+test('[king-max] ui core loop smoke test', async ({ page }) => {
   await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
@@ -118,7 +118,7 @@ test('ui core loop smoke test', async ({ page }) => {
   await expect(page.locator('#board .cell svg.crown')).toHaveCount(0);
 });
 
-test('board state is encoded in and restored from the URL', async ({ page, context }) => {
+test('[king-max] board state is encoded in and restored from the URL', async ({ page, context }) => {
   await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
@@ -144,7 +144,7 @@ test('board state is encoded in and restored from the URL', async ({ page, conte
   await restored.close();
 });
 
-test('share button copies the current encoded board URL', async ({ page, context }) => {
+test('[king-max] share button copies the current encoded board URL', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
   await page.goto('/king-max/');
 
@@ -160,7 +160,7 @@ test('share button copies the current encoded board URL', async ({ page, context
   await expect(page.url()).toContain('board=v1.');
 });
 
-test('nonogram board state is encoded in URL and share copies link', async ({ page, context }) => {
+test('[nonogram] board state is encoded in URL and share copies link', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
   await page.goto('/nonogram/');
 
@@ -191,14 +191,14 @@ test('nonogram board state is encoded in URL and share copies link', async ({ pa
   await restored.close();
 });
 
-test('nonogram shows difficulty score and tier for generated puzzle', async ({ page }) => {
+test('[nonogram] shows difficulty score and tier for generated puzzle', async ({ page }) => {
   await page.goto('/nonogram/');
 
   await expect(page.locator('#difficultyScore')).not.toHaveText('–');
   await expect(page.locator('#difficultyTier')).not.toHaveText('–');
 });
 
-test('nonogram mistakes counter increments on incorrect fill', async ({ page }) => {
+test('[nonogram] mistakes counter increments on incorrect fill', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const cells = page.locator('#board .nonogram-cell');
@@ -219,7 +219,7 @@ test('nonogram mistakes counter increments on incorrect fill', async ({ page }) 
   expect(incremented).toBeTruthy();
 });
 
-test('nonogram tactic panel exposes weight inputs and reset action', async ({ page }) => {
+test('[nonogram] tactic panel exposes weight inputs and reset action', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const weightInputs = page.locator('.tactic-weight-input');
@@ -235,12 +235,12 @@ test('nonogram tactic panel exposes weight inputs and reset action', async ({ pa
   await expect(first).toHaveValue(original);
 });
 
-test('custom nonogram tactic weights influence difficulty scoring', async ({ page }) => {
+test('[nonogram] custom tactic weights influence difficulty scoring', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const result = await page.evaluate(async () => {
-    const generation = await import('../js/nonogram/game-generation.js');
-    const weightsMod = await import('../js/nonogram/difficulty-weights.js');
+    const generation = await import('../games/nonogram/js/game-generation.js');
+    const weightsMod = await import('../games/nonogram/js/difficulty-weights.js');
 
     const puzzle = generation.generateNonogram(5, { difficulty: 'hard', maxAttempts: 500 });
     if (!puzzle) {
@@ -266,7 +266,7 @@ test('custom nonogram tactic weights influence difficulty scoring', async ({ pag
   expect(result.changed, JSON.stringify(result)).toBeTruthy();
 });
 
-test('win banner appears after solving a board state', async ({ page }) => {
+test('[king-max] win banner appears after solving a board state', async ({ page }) => {
   await page.goto('/king-max/');
 
   const cells = page.locator('#board .cell');
@@ -287,11 +287,11 @@ test('win banner appears after solving a board state', async ({ page }) => {
   await expect(page.locator('#winStats')).toContainText('realm solved in');
 });
 
-test('subset tactic catches line-to-region subset eliminations', async ({ page }) => {
+test('[king-max] subset tactic catches line-to-region subset eliminations', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const mod = await import('../js/king-max/deterministic-tactics.js');
+    const mod = await import('../games/king-max/js/deterministic-tactics.js');
 
     const n = 4;
     const region = [
@@ -356,12 +356,12 @@ test('subset tactic catches line-to-region subset eliminations', async ({ page }
   expect(result.removedOutsideRowsForRegion1, JSON.stringify(result)).toBeTruthy();
 });
 
-test('custom tactic weights influence difficulty scoring', async ({ page }) => {
+test('[king-max] custom tactic weights influence difficulty scoring', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const solver = await import('../js/king-max/human-solver.js');
-    const weightMod = await import('../js/king-max/difficulty-weights.js');
+    const solver = await import('../games/king-max/js/human-solver.js');
+    const weightMod = await import('../games/king-max/js/difficulty-weights.js');
 
     const n = 8;
     const region = Array.from({ length: n }, (_, r) =>
@@ -392,11 +392,11 @@ test('custom tactic weights influence difficulty scoring', async ({ page }) => {
   expect(result.ok, JSON.stringify(result)).toBeTruthy();
 });
 
-test('humanSolve emits a trace and Queens still solves correctly via GameInterface', async ({ page }) => {
+test('[king-max] humanSolve emits a trace and solves correctly via GameInterface', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const solver = await import('../js/king-max/human-solver.js');
+    const solver = await import('../games/king-max/js/human-solver.js');
 
     const n = 8;
     // One queen per row (each row is its own region) — trivially solved by hidden singles
@@ -430,12 +430,12 @@ test('humanSolve emits a trace and Queens still solves correctly via GameInterfa
   expect(result.ok, JSON.stringify(result)).toBeTruthy();
 });
 
-test('scoreSolveTrace returns correct score for a known trace', async ({ page }) => {
+test('[king-max] scoreSolveTrace returns correct score for a known trace', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const { scoreSolveTrace } = await import('../js/king-max/difficulty-scorer.js');
-    const { DEFAULT_DIFFICULTY_WEIGHTS } = await import('../js/king-max/difficulty-weights.js');
+    const { scoreSolveTrace } = await import('../games/king-max/js/difficulty-scorer.js');
+    const { DEFAULT_DIFFICULTY_WEIGHTS } = await import('../games/king-max/js/difficulty-weights.js');
 
     // Known trace: two hidden-singles steps (tier 1, observedConstraints 1, weight 1 each)
     // plus one guess step (tier 4, weight 200)
@@ -459,11 +459,11 @@ test('scoreSolveTrace returns correct score for a known trace', async ({ page })
   expect(result.ok, JSON.stringify(result)).toBeTruthy();
 });
 
-test('makeAnnotation validates required fields and returns frozen object', async ({ page }) => {
+test('[king-max] makeAnnotation validates required fields and returns frozen object', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
-    const { makeAnnotation } = await import('../js/reasoning-annotation.js');
+    const { makeAnnotation } = await import('../generic/annotations/reasoning-annotation.js');
 
     // Test 1: Valid annotation
     const valid = makeAnnotation({
@@ -536,13 +536,13 @@ test('makeAnnotation validates required fields and returns frozen object', async
   expect(result.intuitiveOk, 'Intuitive annotation should include confidence').toBeTruthy();
 });
 
-test('annotation renderer creates and removes overlays correctly', async ({ page }) => {
+test('[king-max] annotation renderer creates and removes overlays correctly', async ({ page }) => {
   await page.goto('/king-max/');
 
   const result = await page.evaluate(async () => {
     const { renderAnnotationOverlay, clearAnnotationOverlay, isAnnotationDisplayed } 
-      = await import('../js/annotation-renderer.js');
-    const { makeAnnotation } = await import('../js/reasoning-annotation.js');
+      = await import('../generic/annotations/annotation-renderer.js');
+    const { makeAnnotation } = await import('../generic/annotations/reasoning-annotation.js');
 
     // Create a mock board element with a container
     const boardEl = document.createElement('div');
@@ -609,11 +609,11 @@ test('annotation renderer creates and removes overlays correctly', async ({ page
 
 // ── Nonogram tests ────────────────────────────────────────────────────────────
 
-test('nonogram isSolved returns true for a correct 5×5 grid', async ({ page }) => {
+test('[nonogram] isSolved returns true for a correct 5x5 grid', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const result = await page.evaluate(async () => {
-    const { CELL_STATES, isSolved } = await import('../js/nonogram/puzzle-logic.js');
+    const { CELL_STATES, isSolved } = await import('../games/nonogram/js/puzzle-logic.js');
     const F = CELL_STATES.FILLED;
     const E = CELL_STATES.EMPTY;
 
@@ -643,11 +643,11 @@ test('nonogram isSolved returns true for a correct 5×5 grid', async ({ page }) 
   expect(result.notSolved, 'Wrong grid should not be solved').toBeTruthy();
 });
 
-test('nonogram parseClues validates clues and throws on impossible total', async ({ page }) => {
+test('[nonogram] parseClues validates clues and throws on impossible total', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const result = await page.evaluate(async () => {
-    const { parseClues } = await import('../js/nonogram/puzzle-logic.js');
+    const { parseClues } = await import('../games/nonogram/js/puzzle-logic.js');
 
     let validOk = false;
     let mismatchError = false;
@@ -679,13 +679,13 @@ test('nonogram parseClues validates clues and throws on impossible total', async
   expect(result.overflowError, 'Overflow clue should throw').toBeTruthy();
 });
 
-test('nonogram tactics fire correctly on hand-crafted examples', async ({ page }) => {
+test('[nonogram] tactics fire correctly on hand-crafted examples', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const result = await page.evaluate(async () => {
-    const { CELL_STATES } = await import('../js/nonogram/puzzle-logic.js');
-    const { makeNonogramInterface } = await import('../js/nonogram/game-interface.js');
-    const { tryEmptyLine, tryFullLine, tryOverlap } = await import('../js/nonogram/tactics.js');
+    const { CELL_STATES } = await import('../games/nonogram/js/puzzle-logic.js');
+    const { makeNonogramInterface } = await import('../games/nonogram/js/game-interface.js');
+    const { tryEmptyLine, tryFullLine, tryOverlap } = await import('../games/nonogram/js/tactics.js');
 
     const U = CELL_STATES.UNKNOWN;
     const F = CELL_STATES.FILLED;
@@ -726,12 +726,12 @@ test('nonogram tactics fire correctly on hand-crafted examples', async ({ page }
   expect(result.overlapCellFilled, 'overlap tactic should fill cell 2 of row 0').toBeTruthy();
 });
 
-test('nonogram generator produces solvable puzzles at each difficulty', async ({ page }) => {
+test('[nonogram] generator produces solvable puzzles at each difficulty', async ({ page }) => {
   await page.goto('/nonogram/');
 
   const result = await page.evaluate(async () => {
-    const { generateNonogram } = await import('../js/nonogram/game-generation.js');
-    const { isSolved } = await import('../js/nonogram/puzzle-logic.js');
+    const { generateNonogram } = await import('../games/nonogram/js/game-generation.js');
+    const { isSolved } = await import('../games/nonogram/js/puzzle-logic.js');
 
     const results = {};
     for (const difficulty of ['easy', 'medium', 'hard']) {
@@ -750,7 +750,7 @@ test('nonogram generator produces solvable puzzles at each difficulty', async ({
   }
 });
 
-test('nonogram smoke test: new game renders board, clicking fills cells, win banner appears', async ({ page }) => {
+test('[nonogram] smoke test: new game renders board, clicking fills cells, win banner appears', async ({ page }) => {
   await page.goto('/nonogram/');
 
   // Board should render after automatic new game
@@ -778,7 +778,7 @@ test('nonogram smoke test: new game renders board, clicking fills cells, win ban
 
 // ── Hub / multi-game navigation tests ─────────────────────────────────────────
 
-test('hub landing page loads and shows both game tiles', async ({ page }) => {
+test('[cross-game] hub landing page loads and shows both game tiles', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/Games/i);
   const kingMaxLink = page.locator('a[href*="king-max"]');
@@ -789,7 +789,7 @@ test('hub landing page loads and shows both game tiles', async ({ page }) => {
   await expect(nonogramLink).not.toHaveClass(/coming-soon/);
 });
 
-test('hub game tiles link to reachable pages', async ({ page }) => {
+test('[cross-game] hub game tiles link to reachable pages', async ({ page }) => {
   await page.goto('/');
   // Use the browser-resolved href (not the raw attribute) so relative/absolute
   // paths both work against the local dev server.
@@ -803,7 +803,7 @@ test('hub game tiles link to reachable pages', async ({ page }) => {
   }
 });
 
-test('king-max page has site nav with Home and Nonogram links', async ({ page }) => {
+test('[cross-game] king-max page has site nav with Home and Nonogram links', async ({ page }) => {
   await page.goto('/king-max/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
@@ -812,7 +812,7 @@ test('king-max page has site nav with Home and Nonogram links', async ({ page })
   await expect(nav.locator('a[href="/games/nonogram/"]')).toBeVisible();
 });
 
-test('nonogram page has site nav with Home and King Max links', async ({ page }) => {
+test('[cross-game] nonogram page has site nav with Home and King Max links', async ({ page }) => {
   await page.goto('/nonogram/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
@@ -821,7 +821,7 @@ test('nonogram page has site nav with Home and King Max links', async ({ page })
   await expect(nav.locator('a[aria-current="page"]')).toContainText('Nonogram');
 });
 
-test('tactical stories footer links resolve to shared stories path on localhost', async ({ page }) => {
+test('[cross-game] tactical stories footer links resolve to shared stories path on localhost', async ({ page }) => {
   await page.goto('/king-max/');
   const kingStoriesHref = await page.locator('#tacticalStoriesLink').getAttribute('href');
   expect(kingStoriesHref).toContain('/stories/?path=/docs/strategy-deterministic-tactics--docs');
@@ -831,10 +831,10 @@ test('tactical stories footer links resolve to shared stories path on localhost'
   expect(nonogramStoriesHref).toContain('/stories/?path=/docs/nonogram-tactics--docs');
 });
 
-test('game registry GAMES has king-max and nonogram with equal shape', async ({ page }) => {
+test('[cross-game] game registry GAMES has king-max and nonogram with equal shape', async ({ page }) => {
   await page.goto('/king-max/');
   const result = await page.evaluate(async () => {
-    const { GAMES } = await import('/js/game-registry.js');
+    const { GAMES } = await import('/generic/game-registry.js');
     const required = ['id', 'label', 'path', 'description', 'icon'];
     const errors = [];
     for (const game of GAMES) {
@@ -849,4 +849,31 @@ test('game registry GAMES has king-max and nonogram with equal shape', async ({ 
   expect(result.count).toBeGreaterThanOrEqual(2);
   expect(result.ids).toContain('king-max');
   expect(result.ids).toContain('nonogram');
+});
+
+test('[cross-game] GAME_ADAPTERS expose setup model for both games', async ({ page }) => {
+  await page.goto('/');
+  const result = await page.evaluate(async () => {
+    const { GAME_ADAPTERS } = await import('/generic/game-registry.js');
+    const ids = GAME_ADAPTERS.map((game) => game.id);
+    const invalidAdapters = GAME_ADAPTERS
+      .filter((game) => {
+        if (!game.setupModel) return true;
+        if (game.setupModel.mode !== 'size-preset' && game.setupModel.mode !== 'difficulty') return true;
+        if (!Array.isArray(game.setupModel.options) || game.setupModel.options.length === 0) return true;
+        return !game.setupModel.defaultOptionId;
+      })
+      .map((game) => game.id);
+
+    return {
+      ids,
+      invalidAdapters,
+      count: GAME_ADAPTERS.length
+    };
+  });
+
+  expect(result.count).toBeGreaterThanOrEqual(2);
+  expect(result.ids).toContain('king-max');
+  expect(result.ids).toContain('nonogram');
+  expect(result.invalidAdapters).toHaveLength(0);
 });

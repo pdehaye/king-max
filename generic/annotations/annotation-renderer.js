@@ -24,14 +24,14 @@ const Z_INDEX_BEHIND_SVG = '5';
  */
 export function renderAnnotationOverlay(boardEl, annotation, options = {}) {
   if (!annotation) return () => {};
-  
+
   const { durationMs = 0 } = options;
-  
+
   // Create container for this annotation's overlays
   const containerDiv = document.createElement('div');
   containerDiv.className = 'annotation-overlay-container';
   containerDiv.setAttribute('data-tactic-id', annotation.tacticId);
-  
+
   // Render observed cells with soft highlight
   if (annotation.observed && Array.isArray(annotation.observed)) {
     for (const cell of annotation.observed) {
@@ -42,13 +42,13 @@ export function renderAnnotationOverlay(boardEl, annotation, options = {}) {
       });
     }
   }
-  
+
   // Render concluded cells with strong highlight (color depends on action type)
   if (annotation.concluded && Array.isArray(annotation.concluded)) {
-    const color = annotation.conclusionType === 'place' 
-      ? CONCLUDED_PLACE_COLOR 
+    const color = annotation.conclusionType === 'place'
+      ? CONCLUDED_PLACE_COLOR
       : CONCLUDED_ELIMINATE_COLOR;
-    
+
     for (const cell of annotation.concluded) {
       renderCellOverlay(boardEl, containerDiv, cell, {
         color,
@@ -57,21 +57,21 @@ export function renderAnnotationOverlay(boardEl, annotation, options = {}) {
       });
     }
   }
-  
+
   // Attach container to board
   boardEl.appendChild(containerDiv);
-  
+
   // Auto-clear if duration specified
   let timeoutId = null;
   const clearFn = () => {
     if (timeoutId) clearTimeout(timeoutId);
     containerDiv.remove();
   };
-  
+
   if (durationMs > 0) {
     timeoutId = setTimeout(clearFn, durationMs);
   }
-  
+
   return clearFn;
 }
 
@@ -81,7 +81,7 @@ export function renderAnnotationOverlay(boardEl, annotation, options = {}) {
  */
 export function clearAnnotationOverlay(boardEl) {
   const containers = boardEl.querySelectorAll('.annotation-overlay-container');
-  containers.forEach(c => c.remove());
+  containers.forEach((c) => c.remove());
 }
 
 /**
@@ -96,16 +96,16 @@ function renderCellOverlay(boardEl, containerDiv, cell, style) {
   if (!cell || typeof cell.r !== 'number' || typeof cell.c !== 'number') {
     return; // Invalid cell
   }
-  
+
   // Calculate board grid position
-  // Assumes board is laid out as 8×8 grid with 1fr columns
+  // Assumes board is laid out as 8x8 grid with 1fr columns
   const cellIndex = cell.r * 8 + cell.c;
-  
+
   // Find the corresponding grid cell in the board
   // The board SVG is typically the only child; look for grid cells after it
   const gridCells = boardEl.querySelectorAll('[data-cell-r][data-cell-c]');
   let targetCell = null;
-  
+
   for (const gridCell of gridCells) {
     const r = parseInt(gridCell.getAttribute('data-cell-r'), 10);
     const c = parseInt(gridCell.getAttribute('data-cell-c'), 10);
@@ -114,7 +114,7 @@ function renderCellOverlay(boardEl, containerDiv, cell, style) {
       break;
     }
   }
-  
+
   if (!targetCell) {
     // Fallback: if no grid cell found, create overlay positioned absolutely
     // relative to board based on cell index
@@ -134,12 +134,12 @@ function renderCellOverlay(boardEl, containerDiv, cell, style) {
     containerDiv.appendChild(overlay);
     return;
   }
-  
+
   // Render overlay inside the target cell
   const overlay = document.createElement('div');
   overlay.className = ANNOTATION_OVERLAY_CLASS;
   overlay.setAttribute('data-type', style.type);
-  
+
   // Position absolutely inside the cell
   overlay.style.cssText = `
     position: absolute;
@@ -153,12 +153,12 @@ function renderCellOverlay(boardEl, containerDiv, cell, style) {
     pointer-events: none;
     border: 1px solid rgba(0,0,0,0.1);
   `;
-  
+
   // Ensure target cell is position: relative so overlay positions correctly
   if (getComputedStyle(targetCell).position === 'static') {
     targetCell.style.position = 'relative';
   }
-  
+
   targetCell.appendChild(overlay);
 }
 

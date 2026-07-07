@@ -9,7 +9,7 @@
  *      `state.eliminate(cell)` for EMPTY decisions.
  */
 
-import { makeAnnotation } from '../reasoning-annotation.js';
+import { makeAnnotation } from '../../../generic/annotations/reasoning-annotation.js';
 import { CELL_STATES } from './puzzle-logic.js';
 
 // ─── Internal helpers ────────────────────────────────────────────────────────

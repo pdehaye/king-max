@@ -4,8 +4,8 @@
  * with annotation overlay.
  */
 
-import { CELL_STATES } from '../js/nonogram/puzzle-logic.js';
-import { makeNonogramInterface } from '../js/nonogram/game-interface.js';
+import { CELL_STATES } from '../js/puzzle-logic.js';
+import { makeNonogramInterface } from '../js/game-interface.js';
 import {
   tryFullLine,
   tryEmptyLine,
@@ -13,8 +13,8 @@ import {
   tryEdgeFill,
   tryBoxReduction,
   tryContradictionEmpty
-} from '../js/nonogram/tactics.js';
-import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
+} from '../js/tactics.js';
+import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/board-visuals.js';
 import { nonogramExamples } from './generated/nonogram-examples.generated.js';
 
 const meta = {

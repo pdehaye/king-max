@@ -417,17 +417,17 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
 </div>
 
 <script type="module">
-import { CELL_STATES, isSolved } from '../js/nonogram/puzzle-logic.js';
-import { makeNonogramInterface } from '../js/nonogram/game-interface.js';
-import { NONOGRAM_TACTIC_DESCRIPTORS } from '../js/nonogram/tactics.js';
-import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../js/nonogram/board-visuals.js';
-import { generateNonogram, evaluateNonogramDifficulty } from '../js/nonogram/game-generation.js';
-import { NONOGRAM_TIER_LABELS } from '../js/nonogram/difficulty-scorer.js';
+import { CELL_STATES, isSolved } from '../games/nonogram/js/puzzle-logic.js';
+import { makeNonogramInterface } from '../games/nonogram/js/game-interface.js';
+import { NONOGRAM_TACTIC_DESCRIPTORS } from '../games/nonogram/js/tactics.js';
+import { renderNonogramBoard, updateCell, refreshClueHighlights } from '../games/nonogram/js/board-visuals.js';
+import { generateNonogram, evaluateNonogramDifficulty } from '../games/nonogram/js/game-generation.js';
+import { NONOGRAM_TIER_LABELS } from '../games/nonogram/js/difficulty-scorer.js';
 import {
   DEFAULT_NONOGRAM_DIFFICULTY_WEIGHTS,
   normalizeNonogramDifficultyWeights
-} from '../js/nonogram/difficulty-weights.js';
-import { renderAnnotationOverlay, clearAnnotationOverlay } from '../js/annotation-renderer.js';
+} from '../games/nonogram/js/difficulty-weights.js';
+import { renderAnnotationOverlay, clearAnnotationOverlay } from '../generic/annotations/annotation-renderer.js';
 
 const STORYBOOK_TACTIC_QUERIES = {
   'empty-line': '/story/nonogram-tactics--empty-line',

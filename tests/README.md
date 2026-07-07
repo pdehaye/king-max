@@ -3,7 +3,7 @@
 This folder contains automated no-build regression checks.
 
 ## Scope
-- Puzzle logic module invariants from `js/king-max/puzzle-logic.js`
+- Puzzle logic module invariants from `games/king-max/js/puzzle-logic.js`
 - Core UI smoke flow on `index.html`
 
 ## Run locally
@@ -15,4 +15,4 @@ This folder contains automated no-build regression checks.
 - Start Storybook: `npm run storybook`
 - Build static Storybook: `npm run build-storybook`
 
-Stories and explanations live in `stories/`.
+Stories and explanations live under `games/*/stories/`.

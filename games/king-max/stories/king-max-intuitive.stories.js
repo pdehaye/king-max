@@ -5,7 +5,7 @@
  * practised player applies without full logical proof — e.g. corner
  * pressure, narrow-region shape forcing, and candidate-density signals.
  * The solver infrastructure for these tactics lives in
- * js/reasoning-annotation.js (kind: 'intuitive').
+ * generic/annotations/reasoning-annotation.js (kind: 'intuitive').
  *
  * Each story shows a board snapshot where the intuitive pattern is
  * visible and names the heuristic being demonstrated.

@@ -1,4 +1,4 @@
-import { makeAnnotation } from '../reasoning-annotation.js';
+import { makeAnnotation } from '../../../generic/annotations/reasoning-annotation.js';
 
 function combinations(arr, k) {
   const res = [];
