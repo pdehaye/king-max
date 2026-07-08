@@ -10,8 +10,8 @@ const GAME_IDS = ['king-max', 'nonogram'];
 
 function renderRouteHtml(source, gameId) {
   return source
-    .replace(/href="\.\.\.\/\.\.\.\/styles\.css"/g, 'href="../styles.css"')
-    .replace(/href="\.\.\.\/\.\.\.\/stories\//g, 'href="../stories/')
+    .replace(/href="\.\.\/\.\.\/\.\.\/styles\.css"/g, 'href="../styles.css"')
+    .replace(/href="\.\.\/\.\.\/\.\.\/stories\//g, 'href="../stories/')
     .replace(/from '\.\.\/\.\.\/\.\.\/generic\//g, "from '../generic/")
     .replace(/from '\.\.\/js\//g, `from '../games/${gameId}/js/`);
 }
