@@ -877,3 +877,17 @@ test('[cross-game] GAME_ADAPTERS expose setup model for both games', async ({ pa
   expect(result.ids).toContain('nonogram');
   expect(result.invalidAdapters).toHaveLength(0);
 });
+
+test('[cross-game] canonical king-max html path loads with styles and board', async ({ page }) => {
+  await page.goto('/games/king-max/html/');
+  await expect(page.locator('nav.site-nav a[aria-current="page"]')).toContainText('King Max');
+  await expect(page.locator('#board .cell')).toHaveCount(64);
+  await expect(page.getByLabel('Target realm difficulty')).toBeVisible();
+});
+
+test('[cross-game] canonical nonogram html path loads with styles and board', async ({ page }) => {
+  await page.goto('/games/nonogram/html/');
+  await expect(page.locator('nav.site-nav a[aria-current="page"]')).toContainText('Nonogram');
+  await expect(page.locator('#board .nonogram-cell').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New puzzle' })).toBeVisible();
+});

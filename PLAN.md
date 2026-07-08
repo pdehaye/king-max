@@ -24,11 +24,13 @@ generic/
 
 games/
 	king-max/
+		html/
 		js/
 		stories/
 		scripts/
 		specific/
 	nonogram/
+		html/
 		js/
 		stories/
 		scripts/
@@ -37,6 +39,8 @@ games/
 
 - `generic/` holds framework-level implementations and assets that are game-agnostic.
 - `games/<game>/` holds game-owned implementations and assets, split by runtime (`js`), docs (`stories`), tooling (`scripts`), and deeper game-only modules (`specific`).
+- `games/<game>/html/index.html` is the canonical source for each game route page.
+- Root-level route copies are transitional only; once tooling serves `_site` directly, they should be removed.
 - The current legacy root folders remain temporary during migration; final structure should not rely on top-level generic shims in `js/`.
 
 ## Shared Contract
@@ -124,9 +128,9 @@ Each game should expose the same adapter surface so the generic shell can host i
 - Added initial generic/specific runtime scaffold:
 	- generic/game-adapter.js
 	- generic/game-registry.js
-	- specific/king-max/adapter.js
-	- specific/nonogram/adapter.js
-- Kept backward compatibility by making js/game-registry.js re-export from generic/game-registry.js.
+	- games/king-max/specific/adapter.js
+	- games/nonogram/specific/adapter.js
+- Established generic/game-registry.js as the shared registry entrypoint.
 - Added explicit per-game regression execution scripts:
 	- npm run test:king-max
 	- npm run test:nonogram
@@ -142,13 +146,11 @@ Each game should expose the same adapter surface so the generic shell can host i
 - Updated active consumers to import from generic/annotations:
 	- king-max/index.html
 	- nonogram/index.html
-	- js/king-max/deterministic-tactics.js
-	- js/nonogram/tactics.js
-	- js/nonogram/game-interface.js
+	- games/king-max/js/deterministic-tactics.js
+	- games/nonogram/js/tactics.js
+	- games/nonogram/js/game-interface.js
 	- tests/regression.spec.js
-- Preserved backward compatibility by converting old paths into re-exports:
-	- js/annotation-renderer.js
-	- js/reasoning-annotation.js
+- This established generic/annotations as the long-term annotation source of truth.
 - Verified aggregate coverage still passes via npm run test:games (18 king-max/cross-game + 17 nonogram/cross-game tests).
 
 ### Slice 3 completed (2026-07-07)
@@ -176,11 +178,11 @@ Each game should expose the same adapter surface so the generic shell can host i
 	- king-max/index.html
 	- nonogram/index.html
 	- tests/regression.spec.js
-	- scripts/discover-deterministic-examples.mjs
-	- scripts/discover-nonogram-examples.mjs
-	- stories/game-visuals.js
-	- stories/nonogram-tactics.stories.js
-- Kept temporary compatibility wrappers in js/king-max and js/nonogram while migration continues.
+	- games/king-max/scripts/discover-deterministic-examples.mjs
+	- games/nonogram/scripts/discover-nonogram-examples.mjs
+	- games/king-max/stories/game-visuals.js
+	- games/nonogram/stories/nonogram-tactics.stories.js
+- Used temporary compatibility wrappers during migration before canonical-only enforcement.
 - Updated build/watch scripts to copy games/ into _site and watch games/king-max/js/deterministic-tactics.js.
 - Verified aggregate coverage still passes via npm run test:games (18 king-max/cross-game + 17 nonogram/cross-game tests).
 
@@ -196,11 +198,7 @@ Each game should expose the same adapter surface so the generic shell can host i
 	- games/king-max/scripts/discover-deterministic-examples.mjs
 	- games/nonogram/scripts/discover-nonogram-examples.mjs
 - Updated Storybook and npm scripts to use canonical paths.
-- Added compatibility wrappers at legacy root paths:
-	- stories/*.stories.js
-	- stories/game-visuals.js
-	- stories/generated/*.generated.js
-	- scripts/discover-*.mjs
+- Kept temporary root wrappers only during this migration step, before removal in Slice 6.
 - Verified aggregate coverage still passes via npm run test:games (18 king-max/cross-game + 17 nonogram/cross-game tests).
 
 ### Slice 6 completed (2026-07-07)
@@ -212,3 +210,44 @@ Each game should expose the same adapter surface so the generic shell can host i
 - Updated instruction/skill/agent references to canonical game story paths under games/king-max/stories.
 - Updated generator provenance headers and test docs to canonical games/* paths.
 - Verified aggregate coverage still passes via npm run test:games (18 king-max/cross-game + 17 nonogram/cross-game tests).
+
+### Slice 7 completed (2026-07-08)
+
+- Extracted shared page shell behavior into generic/js/page-shell.js.
+- Moved registry-driven game navigation into the shared shell helper and wired both game pages through it.
+- Moved shared Storybook footer link resolution into the same helper and removed duplicated per-page implementations.
+- Updated:
+	- king-max/index.html
+	- nonogram/index.html
+	- generic/js/page-shell.js
+- Verified focused cross-game shell checks pass via `npx playwright test --grep "\\[cross-game\\]"`.
+- Verified aggregate coverage still passes via npm run test:games (18 king-max/cross-game + 17 nonogram/cross-game tests).
+
+### Slice 8 completed (2026-07-08)
+
+- Added canonical per-game HTML roots:
+	- games/king-max/html/index.html
+	- games/nonogram/html/index.html
+- Updated Playwright/build flow so canonical html sources can drive both source validation and static output.
+- Updated static site build to publish from canonical game html sources.
+
+### Slice 9 completed (2026-07-08)
+
+- Removed legacy root route source files:
+	- king-max/index.html
+	- nonogram/index.html
+- Updated Playwright to serve built `_site` output instead of the source tree, so tests no longer depend on duplicated route files.
+- Canonical game html now exists only under:
+	- games/king-max/html/index.html
+	- games/nonogram/html/index.html
+
+### Slice 10 completed (2026-07-08)
+
+- Fixed canonical game html pages so they load correctly at `/games/<game>/html/`.
+- Updated canonical html asset and module paths to be correct from the canonical source locations:
+	- games/king-max/html/index.html
+	- games/nonogram/html/index.html
+- Added generic/scripts/render-route-html.mjs so route pages in `_site` are rendered from canonical html with route-relative asset paths.
+- Updated generic/js/page-shell.js so Storybook links resolve correctly from canonical html paths.
+- Added regression coverage for canonical html pages under `/games/king-max/html/` and `/games/nonogram/html/`.
+- Verified focused canonical-path checks pass and aggregate coverage still passes via npm run test:games (20 king-max/cross-game + 19 nonogram/cross-game tests).

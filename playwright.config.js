@@ -11,7 +11,7 @@ module.exports = defineConfig({
     screenshot: 'only-on-failure'
   },
   webServer: {
-    command: 'python3 -m http.server 4173',
+    command: 'npm run build:site:base && python3 -m http.server 4173 --directory _site',
     port: 4173,
     reuseExistingServer: true,
     timeout: 120000

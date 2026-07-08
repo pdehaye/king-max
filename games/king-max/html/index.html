@@ -25,16 +25,12 @@
 <meta name="twitter:description" content="Track regions, confirmed kings, and known absence of kings.">
 <meta name="twitter:image" content="https://pdehaye.github.io/games/king-max/social-preview.png">
 <meta name="twitter:image:alt" content="King Max puzzle preview with crown icon and game board.">
-<link rel="stylesheet" href="../styles.css">
+<link rel="stylesheet" href="../../../styles.css">
 </head>
 <body>
 
 <div class="wrap">
-  <nav class="site-nav" aria-label="Site navigation">
-    <a href="/games/" class="nav-home">Games</a>
-    <a href="/games/king-max/" aria-current="page">King Max</a>
-    <a href="/games/nonogram/">Nonogram</a>
-  </nav>
+  <nav class="site-nav" id="siteNav" aria-label="Site navigation"></nav>
   <header>
     <div class="eyebrow">A crest for every crown</div>
     <h1>
@@ -112,7 +108,7 @@
   <footer class="hint-toggle">
     <a id="rulesToggle">How to play</a>
     <span aria-hidden="true"> · </span>
-    <a id="tacticalStoriesLink" href="../stories/?path=/docs/strategy-deterministic-tactics--docs" target="_blank" rel="noopener noreferrer">Tactical stories</a>
+    <a id="tacticalStoriesLink" href="../../../stories/?path=/docs/strategy-deterministic-tactics--docs" target="_blank" rel="noopener noreferrer">Tactical stories</a>
   </footer>
 </div>
 
@@ -131,16 +127,17 @@
 </div>
 
 <script type="module">
-import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from '../games/king-max/js/puzzle-logic.js';
-import { applyRegionBorders, crownSVGMarkup, regionColor } from '../games/king-max/js/board-visuals.js';
-import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../games/king-max/js/deterministic-tactics.js';
-import { humanSolve } from '../games/king-max/js/human-solver.js';
-import { renderAnnotationOverlay, clearAnnotationOverlay } from '../generic/annotations/annotation-renderer.js';
+import { BOARD_SIZE as N, TIER_LABELS, tryGenerateCandidate, generateUniquePuzzle } from '../js/puzzle-logic.js';
+import { applyRegionBorders, crownSVGMarkup, regionColor } from '../js/board-visuals.js';
+import { DETERMINISTIC_TACTIC_DESCRIPTORS } from '../js/deterministic-tactics.js';
+import { humanSolve } from '../js/human-solver.js';
+import { renderAnnotationOverlay, clearAnnotationOverlay } from '../../../generic/annotations/annotation-renderer.js';
+import { renderSiteNav, storybookUrlForPath, wireStorybookLink } from '../../../generic/js/page-shell.js';
 import {
   DEFAULT_DIFFICULTY_WEIGHTS,
   deterministicStepWeight,
   normalizeDifficultyWeights
-} from '../games/king-max/js/difficulty-weights.js';
+} from '../js/difficulty-weights.js';
 
 const STORYBOOK_TACTIC_QUERIES = {
   'hidden-singles': '/story/strategy-deterministic-tactics--hidden-singles',
@@ -342,27 +339,6 @@ function refreshWeightInputs(){
 
 function getTacticById(tacticId){
   return DETERMINISTIC_TACTIC_DESCRIPTORS.find((t) => t.id === tacticId) || null;
-}
-
-function getStorybookBaseUrl(){
-  if(window.location.protocol === 'file:') return 'http://localhost:8080/stories/';
-  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  const isGithubPagesHost = window.location.hostname.endsWith('.github.io');
-  if(window.location.port === '6006') return './';
-  if(window.location.pathname.includes('/stories/')) return './';
-  if(isGithubPagesHost) return '../storybook-static/';
-  if(isLocalhost) return '../stories/';
-  return '../stories/';
-}
-
-function storybookUrlForPath(path){
-  return `${getStorybookBaseUrl()}?path=${path}`;
-}
-
-function wireStorybookLinks(){
-  const link = document.getElementById('tacticalStoriesLink');
-  if(!link) return;
-  link.href = storybookUrlForPath(STORYBOOK_DOCS_QUERY);
 }
 
 function buildTacticControls(){
@@ -1103,7 +1079,8 @@ document.getElementById('rulesToggle').addEventListener('click', ()=>{
 
 buildTacticControls();
 refreshWeightInputs();
-wireStorybookLinks();
+renderSiteNav(document.getElementById('siteNav'), 'king-max');
+wireStorybookLink('tacticalStoriesLink', STORYBOOK_DOCS_QUERY);
 initializeBoardStateFromUrl();
 </script>
 </body>
