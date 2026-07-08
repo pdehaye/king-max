@@ -41,7 +41,7 @@ export function getStorybookBaseUrl(location = window.location) {
     if (isLocalhost) return '../../../stories/';
     return '../../../stories/';
   }
-  if (isGithubPagesHost) return '../storybook-static/';
+  if (isGithubPagesHost) return '../stories/';
   if (isLocalhost) return '../stories/';
   return '../stories/';
 }
