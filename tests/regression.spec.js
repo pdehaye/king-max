@@ -803,22 +803,28 @@ test('[cross-game] hub game tiles link to reachable pages', async ({ page }) => 
   }
 });
 
-test('[cross-game] king-max page has site nav with Home and Nonogram links', async ({ page }) => {
+test('[cross-game] king-max page has site nav with Home link and game dropdown', async ({ page }) => {
   await page.goto('/king-max/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
   await expect(nav.locator('a[href="/games/"]')).toBeVisible();
-  await expect(nav.locator('a[aria-current="page"]')).toContainText('King Max');
-  await expect(nav.locator('a[href="/games/nonogram/"]')).toBeVisible();
+  const gameSelect = nav.getByLabel('Switch game');
+  await expect(gameSelect).toBeVisible();
+  await expect(gameSelect).toHaveValue('/games/king-max/');
+  await expect(gameSelect.locator('option')).toHaveCount(2);
+  await expect(gameSelect.locator('option[value="/games/nonogram/"]')).toHaveText('Nonogram');
 });
 
-test('[cross-game] nonogram page has site nav with Home and King Max links', async ({ page }) => {
+test('[cross-game] nonogram page has site nav with Home link and game dropdown', async ({ page }) => {
   await page.goto('/nonogram/');
   const nav = page.locator('nav.site-nav');
   await expect(nav).toBeVisible();
   await expect(nav.locator('a[href="/games/"]')).toBeVisible();
-  await expect(nav.locator('a[href="/games/king-max/"]')).toBeVisible();
-  await expect(nav.locator('a[aria-current="page"]')).toContainText('Nonogram');
+  const gameSelect = nav.getByLabel('Switch game');
+  await expect(gameSelect).toBeVisible();
+  await expect(gameSelect).toHaveValue('/games/nonogram/');
+  await expect(gameSelect.locator('option')).toHaveCount(2);
+  await expect(gameSelect.locator('option[value="/games/king-max/"]')).toHaveText('King Max');
 });
 
 test('[cross-game] tactical stories footer links resolve to shared stories path on localhost', async ({ page }) => {
@@ -880,14 +886,14 @@ test('[cross-game] GAME_ADAPTERS expose setup model for both games', async ({ pa
 
 test('[cross-game] canonical king-max html path loads with styles and board', async ({ page }) => {
   await page.goto('/games/king-max/html/');
-  await expect(page.locator('nav.site-nav a[aria-current="page"]')).toContainText('King Max');
+  await expect(page.locator('nav.site-nav').getByLabel('Switch game')).toHaveValue('/games/king-max/');
   await expect(page.locator('#board .cell')).toHaveCount(64);
   await expect(page.getByLabel('Target realm difficulty')).toBeVisible();
 });
 
 test('[cross-game] canonical nonogram html path loads with styles and board', async ({ page }) => {
   await page.goto('/games/nonogram/html/');
-  await expect(page.locator('nav.site-nav a[aria-current="page"]')).toContainText('Nonogram');
+  await expect(page.locator('nav.site-nav').getByLabel('Switch game')).toHaveValue('/games/nonogram/');
   await expect(page.locator('#board .nonogram-cell').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'New puzzle' })).toBeVisible();
 });

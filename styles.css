@@ -34,6 +34,7 @@ body{
   display:flex;
   align-items:center;
   gap:1.25rem;
+  justify-content:space-between;
   padding:8px 16px;
   margin-bottom:18px;
   background:var(--card);
@@ -65,6 +66,38 @@ body{
 .site-nav .nav-home{
   margin-right:auto;
   color:var(--seal);
+}
+
+.nav-game-picker{
+  min-width:160px;
+  max-width:100%;
+  padding:7px 32px 7px 10px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--vellum);
+  color:var(--ink);
+  font:inherit;
+}
+
+.nav-game-picker:hover{
+  border-color:var(--gold);
+}
+
+.nav-game-picker:focus-visible{
+  outline:2px solid var(--teal);
+  outline-offset:2px;
+}
+
+@media (max-width: 520px){
+  .site-nav{
+    gap:0.75rem;
+  }
+
+  .nav-game-picker{
+    min-width:0;
+    width:100%;
+    flex:1 1 180px;
+  }
 }
 
 .wrap{

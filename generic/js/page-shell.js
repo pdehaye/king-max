@@ -18,15 +18,25 @@ export function renderSiteNav(navEl, currentGameId) {
   homeLink.textContent = 'Games';
   navEl.appendChild(homeLink);
 
+  const gamePicker = document.createElement('select');
+  gamePicker.className = 'nav-game-picker';
+  gamePicker.setAttribute('aria-label', 'Switch game');
+
   GAMES.forEach((game) => {
-    const link = document.createElement('a');
-    link.href = absoluteGameRoute(game.path);
-    link.textContent = game.label;
-    if (game.id === currentGameId) {
-      link.setAttribute('aria-current', 'page');
-    }
-    navEl.appendChild(link);
+    const option = document.createElement('option');
+    option.value = absoluteGameRoute(game.path);
+    option.textContent = game.label;
+    option.selected = game.id === currentGameId;
+    gamePicker.appendChild(option);
   });
+
+  gamePicker.addEventListener('change', () => {
+    if (gamePicker.value) {
+      window.location.href = gamePicker.value;
+    }
+  });
+
+  navEl.appendChild(gamePicker);
 }
 
 export function getStorybookBaseUrl(location = window.location) {

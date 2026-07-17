@@ -121,6 +121,298 @@ Each game should expose the same adapter surface so the generic shell can host i
 - Nonogram and King Max both continue to work at their existing routes during and after migration.
 - The repo layout clearly separates shared framework code from game-specific code.
 
+## Nurikabe Delivery Plan
+
+### Objective
+
+- Add Nurikabe as a first-class game in the existing generic games hub.
+- Keep static-site compatibility and route behavior aligned with current games.
+- Deliver with explicit red-green-refactor evidence and regression coverage.
+
+### Working Assumptions
+
+- Nurikabe ships as a dedicated game package under `games/nurikabe/` with mirrored subfolders.
+- Initial release prioritizes a robust core loop over advanced generation variety.
+- The first playable version supports URL state sharing and deterministic replay through serialized board state.
+
+### Phase N1: Scaffold and Register
+
+- Create mirrored Nurikabe structure:
+	- `games/nurikabe/html/index.html`
+	- `games/nurikabe/js/`
+	- `games/nurikabe/specific/adapter.js`
+	- `games/nurikabe/stories/`
+	- `games/nurikabe/scripts/`
+- Add Nurikabe adapter metadata (id, label, icon, description, setup model).
+- Register adapter in `generic/game-registry.js`.
+- Update route rendering list in `generic/scripts/render-route-html.mjs`.
+- Update build copy targets and route outputs in `package.json` scripts.
+
+Acceptance criteria:
+- Hub tile for Nurikabe appears on root index.
+- `/nurikabe/` route is generated in `_site` from canonical source html.
+- Game switcher select includes Nurikabe in the site nav.
+
+### Phase N2: Define Core Rules and Failing Scenarios (Red)
+
+- Document acceptance rules before implementation:
+	- Numbered islands must match clue size.
+	- Islands cannot touch orthogonally.
+	- Sea must form one connected component.
+	- No 2x2 all-sea block is allowed.
+- Create failing regression scenarios (manual checklist + Playwright smoke hooks) for:
+	- Invalid board states not detected.
+	- Win condition false positives.
+	- URL encode/decode mismatch.
+
+Acceptance criteria:
+- A written Red section exists for each rule area.
+- At least one reproducible failing scenario per rule area is captured before Green changes.
+
+### Phase N3: Minimal Playable Core (Green)
+
+- Implement `games/nurikabe/js/puzzle-logic.js` for board model, move application, and rule validation.
+- Implement `games/nurikabe/js/game-generation.js` for puzzle creation with solvable board guarantees.
+- Implement `games/nurikabe/js/board-visuals.js` for rendering and interaction states.
+- Wire page controls in `games/nurikabe/html/index.html`:
+	- New puzzle
+	- Clear
+	- Hint
+	- Share puzzle
+	- Timer/mistakes/difficulty chips
+	- Win banner
+- Wire shell helpers through `generic/js/page-shell.js`.
+
+Acceptance criteria:
+- A full puzzle can be started, played, reset, and solved from the UI.
+- Invalid actions produce visible feedback.
+- Shared link restores board state and metadata on reload.
+
+### Phase N4: Difficulty and Hint Quality
+
+- Add `games/nurikabe/js/difficulty-scorer.js` with stable tier labels.
+- Add `games/nurikabe/js/difficulty-weights.js` and optional tactic weighting controls if exposed in UI.
+- Add tactical hint logic aligned with deterministic solving steps where possible.
+
+Acceptance criteria:
+- Generated puzzle shows a non-empty difficulty score and tier.
+- Hint always targets a valid next action or provides clear fallback messaging.
+
+### Phase N5: Stories, Regression, and Refactor
+
+- Add Nurikabe tactic and behavior stories under `games/nurikabe/stories/`.
+- Add Playwright coverage in `tests/regression.spec.js`:
+	- Nurikabe route smoke
+	- Core interaction cycle
+	- Share/restore roundtrip
+	- Win-condition smoke
+- Add npm test target in `package.json` for Nurikabe tag filtering.
+- Refactor duplicated utility logic only after Green checks pass.
+
+Acceptance criteria:
+- Nurikabe stories build with existing Storybook flow.
+- Nurikabe tagged regression tests pass locally.
+- Existing king-max, nonogram, and cross-game tests remain green.
+
+### Execution Checklist (Trackable)
+
+1. Create Nurikabe folder skeleton and adapter.
+2. Register game and enable generated route output.
+3. Write Red scenarios for rules, win logic, and URL state.
+4. Implement minimal playable loop and pass Red scenarios.
+5. Add difficulty scoring and hint reliability checks.
+6. Add stories and regression automation.
+7. Run full game suite and manual playtest checklist.
+8. Capture release notes and residual risk summary.
+
+### Verification and Sign-off
+
+- Manual playtest checkpoints:
+	- Start/reset flow
+	- Core interaction flow
+	- Hint/help flow
+	- Share/restore flow
+	- Completion/win flow
+- Automated checks:
+	- `npm run test:nurikabe` (new)
+	- `npm run test:games`
+	- `npm run build:site`
+- Local pages parity check with `node local-test-server.mjs`.
+
+### Risks and Mitigations
+
+- Risk: generator produces ambiguous or low-quality puzzles.
+	- Mitigation: enforce uniqueness checks and bounded retries with quality floor.
+- Risk: win validation is expensive for larger boards.
+	- Mitigation: maintain incremental validity caches and only run deep checks when needed.
+- Risk: regression growth slows CI feedback.
+	- Mitigation: keep per-game test tags and targeted scripts for focused iteration.
+
+### Nurikabe Issue Breakdown (GitHub-Ready)
+
+#### NURI-01: Scaffold Nurikabe package and route wiring
+
+- Type: feature
+- Estimate: S (0.5 day)
+- Depends on: none
+- Scope:
+	- Create `games/nurikabe/{html,js,specific,stories,scripts}`.
+	- Add `games/nurikabe/specific/adapter.js`.
+	- Register adapter in `generic/game-registry.js`.
+	- Add Nurikabe route generation in `generic/scripts/render-route-html.mjs`.
+	- Ensure `_site/nurikabe/index.html` is emitted by existing build flow.
+- Acceptance:
+	- Hub shows Nurikabe tile.
+	- Game switcher lists Nurikabe.
+	- `npm run build:site:base` produces a working `/nurikabe/` route.
+- Notes:
+	- Keep any UI placeholder minimal; no gameplay logic required in this issue.
+
+#### NURI-02: Define and lock Nurikabe rule contract (Red)
+
+- Type: test/design
+- Estimate: S (0.5 day)
+- Depends on: NURI-01
+- Scope:
+	- Write acceptance rules for islands, sea connectivity, and 2x2 sea prohibition.
+	- Add failing scenarios checklist for each rule area.
+	- Add placeholder/failing test hooks in `tests/regression.spec.js` tagged `[nurikabe]`.
+- Acceptance:
+	- At least one explicit failing scenario exists per rule family.
+	- Failures are reproducible and documented before implementation starts.
+- Notes:
+	- This is the Red gate for TDD. Do not implement rule engine logic here.
+
+#### NURI-03: Implement board state model and rule validator (Green core)
+
+- Type: feature
+- Estimate: M (1 to 1.5 days)
+- Depends on: NURI-02
+- Scope:
+	- Add `games/nurikabe/js/puzzle-logic.js` with:
+		- state representation
+		- move application
+		- legality checks
+		- solved-state validation
+	- Add focused unit-like assertions via Playwright evaluate flows where practical.
+- Acceptance:
+	- Rule checks pass prior failing scenarios from NURI-02.
+	- No false win on invalid island/sea states.
+- Notes:
+	- Keep APIs stable for upcoming UI wiring and generator usage.
+
+#### NURI-04: Build minimal playable Nurikabe UI loop
+
+- Type: feature
+- Estimate: M (1 day)
+- Depends on: NURI-03
+- Scope:
+	- Implement `games/nurikabe/html/index.html` interactive shell using shared page patterns.
+	- Add `games/nurikabe/js/board-visuals.js` for rendering and cell state updates.
+	- Wire controls: new puzzle, clear, hint placeholder, share, timer/mistakes/win banner.
+	- Integrate site nav + Storybook link plumbing via `generic/js/page-shell.js`.
+- Acceptance:
+	- User can start, interact, reset, and finish at least one valid puzzle.
+	- Visual feedback appears on invalid actions.
+	- Mobile layout remains usable.
+
+#### NURI-05: Add generation + URL share/restore stability
+
+- Type: feature
+- Estimate: M/L (1.5 to 2 days)
+- Depends on: NURI-03
+- Scope:
+	- Add `games/nurikabe/js/game-generation.js` with solvable puzzle generation.
+	- Add board serialization/deserialization for URL state in page script.
+	- Add share button behavior aligned with existing games.
+- Acceptance:
+	- Shared URL restores puzzle and board progress.
+	- Generation is bounded and does not freeze UI.
+	- Regression roundtrip test passes (`state -> url -> reload -> same state`).
+
+#### NURI-06: Difficulty scoring and deterministic hint quality
+
+- Type: feature
+- Estimate: M (1 day)
+- Depends on: NURI-05
+- Scope:
+	- Add `games/nurikabe/js/difficulty-scorer.js` and tier labels.
+	- Add `games/nurikabe/js/difficulty-weights.js` if tactic weighting is exposed.
+	- Implement deterministic hint behavior with safe fallback messaging.
+- Acceptance:
+	- Difficulty score and tier display for generated puzzles.
+	- Hint gives valid progress step or explicit “no safe deterministic step” message.
+
+#### NURI-07: Regression suite expansion for Nurikabe
+
+- Type: test
+- Estimate: S/M (0.5 to 1 day)
+- Depends on: NURI-04, NURI-05
+- Scope:
+	- Extend `tests/regression.spec.js` with `[nurikabe]` scenarios:
+		- route smoke
+		- interaction cycle
+		- share/restore
+		- win-condition smoke
+	- Add script targets in `package.json`:
+		- `test:nurikabe`
+		- update `test:games` composition
+- Acceptance:
+	- `npm run test:nurikabe` passes locally.
+	- Existing game tests remain green.
+
+#### NURI-08: Storybook tactic coverage and docs
+
+- Type: docs/test
+- Estimate: S/M (0.5 to 1 day)
+- Depends on: NURI-06
+- Scope:
+	- Add tactic stories under `games/nurikabe/stories/`.
+	- Provide one story per deterministic tactic used by hints/scoring.
+	- Add short “How to play Nurikabe” docs block consistent with current style.
+- Acceptance:
+	- `npm run build-storybook` succeeds.
+	- Nurikabe stories are accessible from static stories output.
+
+#### NURI-09: Final playtest and release readiness pass
+
+- Type: release
+- Estimate: S (0.5 day)
+- Depends on: NURI-07, NURI-08
+- Scope:
+	- Run manual checklist (start/reset, interactions, hint, share/restore, completion).
+	- Run:
+		- `npm run test:nurikabe`
+		- `npm run test:games`
+		- `npm run build:site`
+	- Validate local Pages parity via `node local-test-server.mjs`.
+	- Record residual risks and follow-up backlog candidates.
+- Acceptance:
+	- Go/no-go decision documented with evidence.
+	- No blocker regressions in existing games.
+
+### Suggested Issue Creation Order
+
+1. NURI-01
+2. NURI-02
+3. NURI-03
+4. NURI-04
+5. NURI-05
+6. NURI-06
+7. NURI-07
+8. NURI-08
+9. NURI-09
+
+### Parallelization Guidance
+
+- Safe parallel pair after NURI-03:
+	- NURI-04 (UI loop)
+	- NURI-05 (generation + URL state)
+- Safe parallel pair after NURI-05:
+	- NURI-06 (difficulty/hints)
+	- NURI-07 (regression expansion prep)
+- Keep NURI-09 strictly last.
+
 ## Progress Log
 
 ### Slice 1 completed (2026-07-07)
