@@ -73,5 +73,6 @@ server.listen(PORT, () => {
   console.log(`  Base URL: http://localhost:${PORT}/games/`);
   console.log(`  King Max: http://localhost:${PORT}/games/king-max/`);
   console.log(`  Nonogram: http://localhost:${PORT}/games/nonogram/`);
+  console.log(`  Nurikabe: http://localhost:${PORT}/games/nurikabe/`);
   console.log(`  Stories:  http://localhost:${PORT}/games/stories/\n`);
 });

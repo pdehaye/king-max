@@ -6,7 +6,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../..');
 
-const GAME_IDS = ['king-max', 'nonogram'];
+const GAME_IDS = ['king-max', 'nonogram', 'nurikabe'];
 
 function renderRouteHtml(source, gameId) {
   return source

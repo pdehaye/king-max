@@ -54,7 +54,6 @@
 
   <div class="stats">
     <div class="chip">⏱ <b id="timer">0:00</b></div>
-    <div class="chip mistakes">✕ <b id="mistakes">0</b> mistakes</div>
     <div class="chip">🧩 <b id="difficultyScore">–</b></div>
   </div>
 
@@ -118,7 +117,7 @@
       <path d="M3 18L2 8L7 11.5L12 5L17 11.5L22 8L21 18H3Z" fill="var(--gold)" stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round"/>
     </svg>
     <h2>Realm complete</h2>
-    <p id="winStats">realm solved in 0:00 · 0 mistakes</p>
+    <p id="winStats">realm solved in 0:00</p>
     <div class="win-actions">
       <button id="changeConfigBtn">Change realm</button>
       <button class="primary" id="playAgainBtn">New realm</button>
@@ -163,7 +162,6 @@ let currentTier = null;
 let timerInterval = null;
 let seconds = 0;
 let started = false;
-let mistakes = 0;
 let solved = false;
 let difficultyWeights = loadDifficultyWeights();
 
@@ -429,7 +427,6 @@ function applyBoardState(cand, options = {}){
   }
   seconds = 0;
   started = false;
-  mistakes = 0;
   solved = false;
   clearInterval(timerInterval);
   updateStats();
@@ -567,7 +564,7 @@ function resetBoardState(){
   refreshBoardStateKnowledge();
   currentDifficulty = null;
   currentTier = null;
-  mistakes = 0; solved = false;
+  solved = false;
   seconds = 0; started = false;
   clearInterval(timerInterval);
   updateStats();
@@ -816,7 +813,6 @@ function openTacticStory(tacticId){
 function updateStats(){
   const m = Math.floor(seconds/60), s = seconds%60;
   document.getElementById('timer').textContent = m+':'+String(s).padStart(2,'0');
-  document.getElementById('mistakes').textContent = mistakes;
   document.getElementById('difficultyScore').textContent = currentDifficulty ?? '–';
   const chip = document.getElementById('difficultyScore').closest('.chip');
   if(chip) chip.title = currentTier ? `Realm difficulty ${currentDifficulty} — ${TIER_LABELS[currentTier]}` : '';
@@ -869,7 +865,7 @@ function checkBoardStateWin(){
     solved = true;
     clearInterval(timerInterval);
     const m = Math.floor(seconds/60), s = seconds%60;
-    document.getElementById('winStats').textContent = `realm solved in ${m}:${String(s).padStart(2,'0')} · ${mistakes} mistake${mistakes===1?'':'s'}`;
+    document.getElementById('winStats').textContent = `realm solved in ${m}:${String(s).padStart(2,'0')}`;
     document.getElementById('winBanner').classList.add('show');
   }
 }
@@ -918,14 +914,7 @@ function onCellClick(r,c){
   startTimerIfNeeded();
   cellState[r][c] = (cellState[r][c] + 1) % 3;
 
-  if(cellState[r][c] === 2){
-   refreshBoardStateKnowledge();
-   const after = getBoardStateConflicts().conflicts;
-   const key = r+','+c;
-   if(after.has(key)) mistakes++;
-  } else {
-   refreshBoardStateKnowledge();
-  }
+  refreshBoardStateKnowledge();
   updateBoardStateUrl();
   updateStats();
   renderBoard();

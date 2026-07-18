@@ -1,12 +1,14 @@
 import { KING_MAX_ADAPTER } from '../games/king-max/specific/adapter.js';
 import { NONOGRAM_ADAPTER } from '../games/nonogram/specific/adapter.js';
+import { NURIKABE_ADAPTER } from '../games/nurikabe/specific/adapter.js';
 
 /**
  * Generic catalog consumed by the hub and (later) by the generic shell.
  */
 export const GAME_ADAPTERS = [
   KING_MAX_ADAPTER,
-  NONOGRAM_ADAPTER
+  NONOGRAM_ADAPTER,
+  NURIKABE_ADAPTER
 ];
 
 /**

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nurikabe</title>
+<meta name="description" content="Nurikabe logic puzzle: build numbered islands and keep one connected sea.">
+<meta name="theme-color" content="#2B2420">
+<link rel="stylesheet" href="../../../styles.css">
+<style>
+:root {
+  --nuri-cell-size: 52px;
+}
+
+.wrap {
+  max-width: 560px;
+}
+
+.nuri-board-wrap {
+  margin: 0 auto;
+  width: min(100%, 460px);
+}
+
+#board {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.nurikabe-cell {
+  border: 1px solid color-mix(in srgb, var(--line) 85%, #fff);
+  margin: 0;
+  background: var(--card);
+  color: var(--ink);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(11px, 1.8vw, 16px);
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.08s, background 0.1s;
+}
+
+.nurikabe-cell:hover {
+  filter: brightness(0.97);
+}
+
+.nurikabe-cell.unknown {
+  background: var(--card);
+}
+
+.nurikabe-cell.island {
+  background: color-mix(in srgb, var(--gold) 34%, var(--card));
+}
+
+.nurikabe-cell.sea {
+  background: color-mix(in srgb, var(--teal) 70%, #0f2022);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.nurikabe-cell.clue {
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--seal) 55%, var(--card));
+}
+
+.nurikabe-cell.invalid {
+  box-shadow: inset 0 0 0 3px var(--seal);
+  animation: nuriInvalidPulse 0.4s ease;
+}
+
+@keyframes nuriInvalidPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.controls {
+  margin-top: 14px;
+}
+
+.controls button {
+  flex: 1 1 130px;
+}
+
+.hint-text {
+  min-height: 34px;
+  margin: 10px 0 0;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.share-status {
+  min-height: 18px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+.tactic-panel {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--card);
+}
+
+.tactic-panel > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+
+.tactics-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tactic-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.tactic-btn {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--vellum);
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tactic-btn:hover {
+  background: var(--vellum-deep);
+}
+
+.assist-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  user-select: none;
+  cursor: pointer;
+}
+
+.assist-toggle input {
+  accent-color: var(--teal);
+}
+
+.tactic-status {
+  min-height: 18px;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.rules {
+  margin-top: 14px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+  display: none;
+}
+
+.rules.open {
+  display: block;
+}
+
+.win-banner {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(43, 36, 32, 0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.win-banner.visible {
+  display: flex;
+}
+
+.win-card {
+  background: var(--card);
+  border-radius: 16px;
+  width: min(92vw, 360px);
+  padding: 24px 20px;
+  box-shadow: 0 14px 32px -18px rgba(0, 0, 0, 0.4);
+  text-align: center;
+}
+
+.win-card h2 {
+  margin: 0 0 8px;
+  font-family: 'Fraunces', serif;
+}
+
+.win-card p {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+}
+
+.win-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .controls button {
+    flex: 1 1 calc(50% - 8px);
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <nav class="site-nav" id="siteNav" aria-label="Site navigation"></nav>
+  <header>
+    <div class="eyebrow">Connected sea, separate islands</div>
+    <h1>Nurikabe</h1>
+    <div class="tagline">clues define island size; water must stay whole</div>
+  </header>
+
+  <div class="stats">
+    <div class="chip">Time <b id="timer">0:00</b></div>
+    <div class="chip">Difficulty <b id="difficultyScore">-</b></div>
+    <div class="chip">Tier <b id="difficultyTier">-</b></div>
+  </div>
+
+  <div class="nuri-board-wrap board-frame">
+    <div id="board"></div>
+  </div>
+
+  <p class="hint-text" id="hintText" aria-live="polite"></p>
+
+  <div class="controls">
+    <button id="newGameBtn" class="primary">New puzzle</button>
+    <button id="clearBtn">Clear</button>
+    <button id="hintBtn">Hint</button>
+    <button id="shareBtn">Share puzzle</button>
+  </div>
+  <p class="share-status" id="shareStatus" aria-live="polite"></p>
+
+  <div class="tactic-panel">
+    <label>Nurikabe tactics</label>
+    <div id="tacticsList" class="tactics-list" aria-label="Nurikabe tactic controls"></div>
+    <p id="tacticStatus" class="tactic-status" aria-live="polite"></p>
+  </div>
+
+  <div class="rules" id="rules">
+    <b>How to play:</b>
+    <ul>
+      <li>Each number is one island and gives the exact island size.</li>
+      <li>Islands are connected orthogonally and cannot share cells with other clues.</li>
+      <li>Sea cells form one connected region and may not contain a 2x2 sea block.</li>
+      <li>Click a non-clue cell to cycle unknown -> island -> sea -> unknown.</li>
+    </ul>
+  </div>
+
+  <footer class="hint-toggle">
+    <a id="rulesToggle">How to play</a>
+    <span aria-hidden="true"> | </span>
+    <a id="tacticalStoriesLink" target="_blank" rel="noopener noreferrer">Tactic stories</a>
+  </footer>
+</div>
+
+<div class="win-banner" id="winBanner">
+  <div class="win-card">
+    <h2>Puzzle solved</h2>
+    <p id="winStats"></p>
+    <div class="win-actions">
+      <button id="playAgainBtn" class="primary">New puzzle</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { renderSiteNav, wireStorybookLink } from '../../../generic/js/page-shell.js';
+import { generateNurikabe } from '../js/game-generation.js';
+import {
+  CELL_STATES,
+  createInitialPlayerGrid,
+  toggleCellState,
+  setCellState,
+  evaluateBoard,
+  isSolved,
+  encodeGridState,
+  decodeGridState
+} from '../js/puzzle-logic.js';
+import { renderNurikabeBoard, updateNurikabeBoard } from '../js/board-visuals.js';
+import { NURIKABE_TIER_LABELS } from '../js/difficulty-scorer.js';
+import {
+  NURIKABE_TACTIC_DESCRIPTORS,
+  applyNo2x2Ocean,
+  applyFullGrownIsland,
+  applyOnlyOneExpansionPath,
+  applySeaConnectivityPreservation,
+  applyDiagonalClueSeparation,
+  applyInaccessible
+} from '../js/tactics.js';
+
+const BOARD_QUERY_KEY = 'board';
+const STORYBOOK_DEFAULT_QUERY = '/docs/nurikabe-tactics--docs';
+
+let puzzle = null;
+let grid = [];
+let boardRefs = null;
+let invalidCells = [];
+let seconds = 0;
+let timerId = null;
+let started = false;
+let solved = false;
+
+const boardEl = document.getElementById('board');
+const timerEl = document.getElementById('timer');
+const difficultyScoreEl = document.getElementById('difficultyScore');
+const difficultyTierEl = document.getElementById('difficultyTier');
+const hintTextEl = document.getElementById('hintText');
+const shareStatusEl = document.getElementById('shareStatus');
+const tacticStatusEl = document.getElementById('tacticStatus');
+const winBannerEl = document.getElementById('winBanner');
+const winStatsEl = document.getElementById('winStats');
+
+const autoTactics = new Set();
+
+const TACTIC_RUNNERS = {
+  'no-2x2-ocean': (boardGrid) => applyNo2x2Ocean(boardGrid),
+  'full-grown-island': (boardGrid) => applyFullGrownIsland(boardGrid, puzzle),
+  'only-one-expansion-path': (boardGrid) => applyOnlyOneExpansionPath(boardGrid, puzzle),
+  'sea-connectivity-preservation': (boardGrid) => applySeaConnectivityPreservation(boardGrid, puzzle),
+  'diagonal-clue-separation': (boardGrid) => applyDiagonalClueSeparation(boardGrid, puzzle),
+  inaccessible: (boardGrid) => applyInaccessible(boardGrid, puzzle)
+};
+
+function formatTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60);
+  const s = String(totalSeconds % 60).padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+function startTimer() {
+  if (started || solved) return;
+  started = true;
+  timerId = setInterval(() => {
+    seconds += 1;
+    timerEl.textContent = formatTime(seconds);
+  }, 1000);
+}
+
+function resetTimer() {
+  if (timerId) clearInterval(timerId);
+  timerId = null;
+  started = false;
+  seconds = 0;
+  timerEl.textContent = '0:00';
+}
+
+function setShareStatus(message, isError = false) {
+  shareStatusEl.textContent = message;
+  shareStatusEl.style.color = isError ? 'var(--seal)' : 'var(--ink-soft)';
+}
+
+function setHintText(message, isError = false) {
+  hintTextEl.textContent = message;
+  hintTextEl.style.color = isError ? 'var(--seal)' : 'var(--ink-soft)';
+}
+
+function updateStats() {
+  difficultyScoreEl.textContent = String(Math.round(puzzle.difficultyScore));
+  difficultyTierEl.textContent = NURIKABE_TIER_LABELS[puzzle.difficultyTier] || `tier ${puzzle.difficultyTier}`;
+}
+
+function setTacticStatus(message, isError = false) {
+  tacticStatusEl.textContent = message;
+  tacticStatusEl.style.color = isError ? 'var(--seal)' : 'var(--ink-soft)';
+}
+
+function encodePayload() {
+  return btoa(JSON.stringify({
+    puzzle,
+    gridRaw: encodeGridState(grid),
+    seconds
+  }));
+}
+
+function decodePayload(raw) {
+  try {
+    const parsed = JSON.parse(atob(raw));
+    if (!parsed || typeof parsed !== 'object') return null;
+    const parsedPuzzle = parsed.puzzle;
+    if (!parsedPuzzle || !Array.isArray(parsedPuzzle.clues) || !Array.isArray(parsedPuzzle.solution)) return null;
+
+    const clueByKey = {};
+    for (const clue of parsedPuzzle.clues) {
+      clueByKey[`${clue.r},${clue.c}`] = clue;
+    }
+    parsedPuzzle.clueByKey = clueByKey;
+
+    const parsedGrid = decodeGridState(parsed.gridRaw, parsedPuzzle.size);
+    if (!parsedGrid) return null;
+
+    return {
+      puzzle: parsedPuzzle,
+      grid: parsedGrid,
+      seconds: Number.isInteger(parsed.seconds) && parsed.seconds >= 0 ? parsed.seconds : 0
+    };
+  } catch {
+    return null;
+  }
+}
+
+function updateUrlState() {
+  const url = new URL(window.location.href);
+  url.searchParams.set(BOARD_QUERY_KEY, encodePayload());
+  window.history.replaceState(null, '', url.toString());
+}
+
+function applyEvaluationFeedback(evaluation) {
+  if (evaluation.violations.length > 0) {
+    invalidCells = evaluation.violations[0].cells;
+    setHintText(evaluation.violations[0].message, true);
+  } else {
+    invalidCells = [];
+    if (!solved) setHintText('');
+  }
+}
+
+function render() {
+  updateNurikabeBoard(boardRefs, puzzle, grid, { invalidCells });
+  updateUrlState();
+}
+
+function applyTacticById(tacticId, options = {}) {
+  const runner = TACTIC_RUNNERS[tacticId];
+  if (!runner || solved) return false;
+
+  const result = runner(grid);
+  if (!result.changed) {
+    if (!options.silent) setTacticStatus(result.message);
+    return false;
+  }
+
+  grid = result.grid;
+  const evaluation = evaluateBoard(grid, puzzle, { requireComplete: false });
+  applyEvaluationFeedback(evaluation);
+  render();
+  checkSolved();
+  if (!options.silent) setTacticStatus(result.message);
+  return true;
+}
+
+function runAutoTactics() {
+  if (autoTactics.size === 0 || solved) return;
+
+  let changedAny = false;
+  let guard = 0;
+  while (guard < 20) {
+    guard += 1;
+    let changedThisPass = false;
+    for (const tacticId of autoTactics) {
+      const changed = applyTacticById(tacticId, { silent: true });
+      if (changed) {
+        changedThisPass = true;
+        changedAny = true;
+      }
+      if (solved) break;
+    }
+    if (!changedThisPass || solved) break;
+  }
+
+  if (changedAny && !solved) {
+    setTacticStatus('Auto tactics applied forced moves.');
+  }
+}
+
+function buildTacticControls() {
+  const list = document.getElementById('tacticsList');
+  list.innerHTML = '';
+
+  for (const tactic of NURIKABE_TACTIC_DESCRIPTORS) {
+    const row = document.createElement('div');
+    row.className = 'tactic-row';
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'tactic-btn';
+    button.dataset.tacticId = tactic.id;
+    button.textContent = tactic.label;
+    button.addEventListener('click', () => {
+      applyTacticById(tactic.id, { silent: false });
+    });
+
+    const toggleLabel = document.createElement('label');
+    toggleLabel.className = 'assist-toggle';
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.dataset.tacticId = tactic.id;
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) autoTactics.add(tactic.id);
+      else autoTactics.delete(tactic.id);
+      if (checkbox.checked) runAutoTactics();
+    });
+
+    const text = document.createElement('span');
+    text.textContent = 'auto';
+
+    toggleLabel.appendChild(checkbox);
+    toggleLabel.appendChild(text);
+
+    row.appendChild(button);
+    row.appendChild(toggleLabel);
+    list.appendChild(row);
+  }
+}
+
+function checkSolved() {
+  if (isSolved(grid, puzzle)) {
+    solved = true;
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}.`;
+    winBannerEl.classList.add('visible');
+    setHintText('All constraints satisfied.');
+  }
+}
+
+function applyMove(r, c, state = null) {
+  if (solved) return;
+
+  startTimer();
+  grid = state === null
+    ? toggleCellState(grid, puzzle, r, c)
+    : setCellState(grid, puzzle, r, c, state);
+
+  const evaluation = evaluateBoard(grid, puzzle, { requireComplete: false });
+  applyEvaluationFeedback(evaluation);
+  render();
+  runAutoTactics();
+  checkSolved();
+}
+
+function nextHint() {
+  if (solved) {
+    setHintText('The puzzle is already solved.');
+    return;
+  }
+
+  for (let r = 0; r < puzzle.size; r++) {
+    for (let c = 0; c < puzzle.size; c++) {
+      if (puzzle.clueByKey[`${r},${c}`]) continue;
+      if (grid[r][c] === puzzle.solution[r][c]) continue;
+
+      const target = puzzle.solution[r][c] === CELL_STATES.ISLAND ? 'island' : 'sea';
+      setHintText(`Try cell (${r + 1}, ${c + 1}) as ${target}.`);
+      return;
+    }
+  }
+
+  setHintText('No deterministic hint found from current state.', true);
+}
+
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const ok = document.execCommand('copy');
+  document.body.removeChild(textarea);
+  if (!ok) throw new Error('copy failed');
+}
+
+async function shareBoard() {
+  updateUrlState();
+  try {
+    await copyToClipboard(window.location.href);
+    setShareStatus('Puzzle link copied.');
+  } catch {
+    setShareStatus('Could not copy puzzle link.', true);
+  }
+}
+
+function clearBoard() {
+  if (solved) return;
+  grid = createInitialPlayerGrid(puzzle);
+  invalidCells = [];
+  setHintText('');
+  setTacticStatus('');
+  render();
+  runAutoTactics();
+}
+
+function startNewPuzzle(restored = null) {
+  if (restored) {
+    puzzle = restored.puzzle;
+    grid = restored.grid;
+    seconds = restored.seconds;
+    timerEl.textContent = formatTime(seconds);
+  } else {
+    puzzle = generateNurikabe(6);
+    grid = createInitialPlayerGrid(puzzle);
+    solved = false;
+    resetTimer();
+  }
+
+  solved = false;
+  invalidCells = [];
+  winBannerEl.classList.remove('visible');
+  setHintText('');
+  setShareStatus('');
+  setTacticStatus('');
+  updateStats();
+
+  boardRefs = renderNurikabeBoard(boardEl, puzzle, grid, applyMove, (r, c) => {
+    applyMove(r, c, CELL_STATES.SEA);
+  });
+
+  render();
+  runAutoTactics();
+}
+
+function loadFromUrlIfPresent() {
+  const raw = new URL(window.location.href).searchParams.get(BOARD_QUERY_KEY);
+  if (!raw) return null;
+  return decodePayload(raw);
+}
+
+window.__NURIKABE_DEBUG = {
+  getPuzzle: () => puzzle,
+  getGrid: () => grid.map((row) => row.slice()),
+  setGrid: (nextGrid) => {
+    grid = nextGrid.map((row) => row.slice());
+    render();
+  },
+  solveFromSolution: () => {
+    grid = puzzle.solution.map((row) => row.slice());
+    render();
+    checkSolved();
+  }
+};
+
+renderSiteNav(document.getElementById('siteNav'), 'nurikabe');
+wireStorybookLink('tacticalStoriesLink', STORYBOOK_DEFAULT_QUERY);
+buildTacticControls();
+
+document.getElementById('newGameBtn').addEventListener('click', () => startNewPuzzle(null));
+document.getElementById('clearBtn').addEventListener('click', clearBoard);
+document.getElementById('hintBtn').addEventListener('click', nextHint);
+document.getElementById('shareBtn').addEventListener('click', shareBoard);
+document.getElementById('playAgainBtn').addEventListener('click', () => startNewPuzzle(null));
+document.getElementById('rulesToggle').addEventListener('click', () => {
+  document.getElementById('rules').classList.toggle('open');
+});
+
+const restored = loadFromUrlIfPresent();
+startNewPuzzle(restored);
+</script>
+
+</body>
+</html>

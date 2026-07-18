@@ -198,25 +198,13 @@ test('[nonogram] shows difficulty score and tier for generated puzzle', async ({
   await expect(page.locator('#difficultyTier')).not.toHaveText('–');
 });
 
-test('[nonogram] mistakes counter increments on incorrect fill', async ({ page }) => {
-  await page.goto('/nonogram/');
-
-  const cells = page.locator('#board .nonogram-cell');
-  await expect(cells.first()).toBeVisible();
-  await expect(page.locator('#mistakes')).toHaveText('0');
-
-  const total = await cells.count();
-  let incremented = false;
-  for (let i = 0; i < total; i++) {
-    await cells.nth(i).click();
-    const mistakesText = await page.locator('#mistakes').innerText();
-    if (Number(mistakesText) > 0) {
-      incremented = true;
-      break;
-    }
+test('[cross-game] stats omit mistakes counter on all game pages', async ({ page }) => {
+  for (const route of ['/king-max/', '/nonogram/', '/nurikabe/']) {
+    await page.goto(route);
+    await expect(page.locator('.stats')).toBeVisible();
+    await expect(page.locator('#mistakes')).toHaveCount(0);
+    await expect(page.locator('.chip.mistakes')).toHaveCount(0);
   }
-
-  expect(incremented).toBeTruthy();
 });
 
 test('[nonogram] tactic panel exposes weight inputs and reset action', async ({ page }) => {
@@ -776,17 +764,402 @@ test('[nonogram] smoke test: new game renders board, clicking fills cells, win b
   await expect(page.locator('.nonogram-cell')).not.toHaveCount(0);
 });
 
+// ── Nurikabe tests ───────────────────────────────────────────────────────────
+
+test('[nurikabe] puzzle logic validates core constraints', async ({ page }) => {
+  await page.goto('/nurikabe/');
+
+  const result = await page.evaluate(async () => {
+    const { generateNurikabe } = await import('../games/nurikabe/js/game-generation.js');
+    const { createInitialPlayerGrid, evaluateBoard, isSolved, CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const puzzle = generateNurikabe(6);
+    const baseGrid = createInitialPlayerGrid(puzzle);
+
+    const partial = evaluateBoard(baseGrid, puzzle, { requireComplete: false });
+    const completeCheck = evaluateBoard(baseGrid, puzzle, { requireComplete: true });
+
+    const solvedGrid = puzzle.solution.map((row) => row.slice());
+    const solved = isSolved(solvedGrid, puzzle);
+
+    const brokenGrid = solvedGrid.map((row) => row.slice());
+    outer: for (let r = 0; r < puzzle.size; r++) {
+      for (let c = 0; c < puzzle.size; c++) {
+        if (!puzzle.clueByKey[`${r},${c}`]) {
+          brokenGrid[r][c] = solvedGrid[r][c] === CELL_STATES.SEA
+            ? CELL_STATES.ISLAND
+            : CELL_STATES.SEA;
+          break outer;
+        }
+      }
+    }
+    const solvedBroken = isSolved(brokenGrid, puzzle);
+
+    return {
+      partialValid: partial.valid,
+      completeValid: completeCheck.valid,
+      solved,
+      solvedBroken
+    };
+  });
+
+  expect(result.partialValid, JSON.stringify(result)).toBeTruthy();
+  expect(result.completeValid, JSON.stringify(result)).toBeFalsy();
+  expect(result.solved, JSON.stringify(result)).toBeTruthy();
+  expect(result.solvedBroken, JSON.stringify(result)).toBeFalsy();
+});
+
+test('[nurikabe] board state is encoded/restored and share copies URL', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: 'http://127.0.0.1:4173' });
+  await page.goto('/nurikabe/');
+
+  const cells = page.locator('#board .nurikabe-cell:not(.clue)');
+  await expect(cells.first()).toBeVisible();
+
+  const first = cells.nth(0);
+  const firstR = await first.getAttribute('data-r');
+  const firstC = await first.getAttribute('data-c');
+  await first.click();
+
+  await page.locator('#shareBtn').click();
+  await expect(page.locator('#shareStatus')).toContainText('Puzzle link copied.');
+  await expect(page.evaluate(() => navigator.clipboard.readText())).resolves.toBe(page.url());
+  await expect(page.url()).toContain('board=');
+
+  const restored = await context.newPage();
+  await restored.goto(page.url());
+  const restoredCell = restored.locator(`#board .nurikabe-cell[data-r="${firstR}"][data-c="${firstC}"]`);
+  await expect(restoredCell).toHaveClass(/island/);
+  await restored.close();
+});
+
+test('[nurikabe] win banner appears when solved grid is applied', async ({ page }) => {
+  await page.goto('/nurikabe/');
+
+  await page.evaluate(() => {
+    window.__NURIKABE_DEBUG.solveFromSolution();
+  });
+
+  await expect(page.locator('#winBanner')).toHaveClass(/visible/);
+  await expect(page.locator('#winStats')).toContainText('Solved in');
+});
+
+test('[nurikabe] No 2x2 ocean tactic applies forced island cell', async ({ page }) => {
+  await page.goto('/nurikabe/');
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const S = CELL_STATES.SEA;
+
+    const grid = [
+      [S, S, U],
+      [S, U, U],
+      [U, U, U]
+    ];
+
+    const out = tactics.applyNo2x2Ocean(grid);
+    return {
+      changed: out.changed,
+      forcedIsland: out.grid[1][1] === CELL_STATES.ISLAND,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.forcedIsland, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBeGreaterThan(0);
+});
+
+test('[nurikabe] Full grown island tactic seals island border with sea', async ({ page }) => {
+  await page.goto('/nurikabe/');
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const I = CELL_STATES.ISLAND;
+    const S = CELL_STATES.SEA;
+
+    const puzzle = {
+      size: 4,
+      clues: [{ r: 1, c: 1, size: 2 }],
+      clueByKey: { '1,1': { r: 1, c: 1, size: 2 } }
+    };
+
+    const grid = [
+      [U, U, U, U],
+      [U, I, I, U],
+      [U, U, U, U],
+      [U, U, U, U]
+    ];
+
+    const out = tactics.applyFullGrownIsland(grid, puzzle);
+    return {
+      changed: out.changed,
+      seaPlacedAbove: out.grid[0][1] === S,
+      seaPlacedBelow: out.grid[2][1] === S,
+      seaPlacedRight: out.grid[1][3] === S,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.seaPlacedAbove, JSON.stringify(result)).toBeTruthy();
+  expect(result.seaPlacedBelow, JSON.stringify(result)).toBeTruthy();
+  expect(result.seaPlacedRight, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBeGreaterThan(0);
+});
+
+test('[nurikabe] Only one expansion path tactic grows island into its sole legal cell', async ({ page }) => {
+  await page.goto('/nurikabe/');
+  await expect(page.getByRole('button', { name: 'Only one expansion path' })).toBeVisible();
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const I = CELL_STATES.ISLAND;
+    const S = CELL_STATES.SEA;
+
+    const puzzle = {
+      size: 4,
+      clues: [
+        { r: 1, c: 1, size: 2 },
+        { r: 1, c: 3, size: 1 }
+      ],
+      clueByKey: {
+        '1,1': { r: 1, c: 1, size: 2 },
+        '1,3': { r: 1, c: 3, size: 1 }
+      }
+    };
+
+    const grid = [
+      [U, S, U, U],
+      [S, I, U, I],
+      [U, U, U, U],
+      [U, U, U, U]
+    ];
+
+    const out = tactics.applyOnlyOneExpansionPath(grid, puzzle);
+    return {
+      changed: out.changed,
+      forcedIsland: out.grid[2][1] === I,
+      blockedCellStayedUnknown: out.grid[1][2] === U,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.forcedIsland, JSON.stringify(result)).toBeTruthy();
+  expect(result.blockedCellStayedUnknown, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBe(1);
+});
+
+test('[nurikabe] Sea connectivity preservation marks articulation as sea', async ({ page }) => {
+  await page.goto('/nurikabe/');
+  await expect(page.getByRole('button', { name: 'Sea connectivity preservation' })).toBeVisible();
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const I = CELL_STATES.ISLAND;
+    const S = CELL_STATES.SEA;
+
+    const puzzle = {
+      size: 3,
+      clues: [],
+      clueByKey: {}
+    };
+
+    const grid = [
+      [S, U, S],
+      [I, U, I],
+      [U, U, U]
+    ];
+
+    const out = tactics.applySeaConnectivityPreservation(grid, puzzle);
+    return {
+      changed: out.changed,
+      forcedSea: out.grid[0][1] === S,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.forcedSea, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBeGreaterThan(0);
+});
+
+test('[nurikabe] Diagonal clue separation marks bridge cells as sea', async ({ page }) => {
+  await page.goto('/nurikabe/');
+  await expect(page.getByRole('button', { name: 'Diagonal clue separation' })).toBeVisible();
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const I = CELL_STATES.ISLAND;
+    const S = CELL_STATES.SEA;
+
+    const puzzle = {
+      size: 3,
+      clues: [
+        { r: 0, c: 0, size: 1 },
+        { r: 1, c: 1, size: 1 }
+      ],
+      clueByKey: {
+        '0,0': { r: 0, c: 0, size: 1 },
+        '1,1': { r: 1, c: 1, size: 1 }
+      }
+    };
+
+    const grid = [
+      [I, U, U],
+      [U, I, U],
+      [U, U, U]
+    ];
+
+    const out = tactics.applyDiagonalClueSeparation(grid, puzzle);
+    return {
+      changed: out.changed,
+      firstBridgeSea: out.grid[0][1] === S,
+      secondBridgeSea: out.grid[1][0] === S,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.firstBridgeSea, JSON.stringify(result)).toBeTruthy();
+  expect(result.secondBridgeSea, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBe(2);
+});
+
+test('[nurikabe] Inaccessible marks unreachable cells as sea', async ({ page }) => {
+  await page.goto('/nurikabe/');
+  await expect(page.getByRole('button', { name: 'Inaccessible' })).toBeVisible();
+
+  const result = await page.evaluate(async () => {
+    const tactics = await import('../games/nurikabe/js/tactics.js');
+    const { CELL_STATES } = await import('../games/nurikabe/js/puzzle-logic.js');
+
+    const U = CELL_STATES.UNKNOWN;
+    const I = CELL_STATES.ISLAND;
+    const S = CELL_STATES.SEA;
+
+    const puzzle = {
+      size: 4,
+      clues: [
+        { r: 1, c: 1, size: 2 },
+        { r: 3, c: 3, size: 1 }
+      ],
+      clueByKey: {
+        '1,1': { r: 1, c: 1, size: 2 },
+        '3,3': { r: 3, c: 3, size: 1 }
+      }
+    };
+
+    const grid = [
+      [U, U, U, U],
+      [U, I, U, U],
+      [U, U, U, U],
+      [U, U, U, I]
+    ];
+
+    const out = tactics.applyInaccessible(grid, puzzle);
+    return {
+      changed: out.changed,
+      farCellForcedSea: out.grid[0][3] === S,
+      reachableNeighborStaysUnknown: out.grid[0][1] === U,
+      changeCount: out.changes.length
+    };
+  });
+
+  expect(result.changed, JSON.stringify(result)).toBeTruthy();
+  expect(result.farCellForcedSea, JSON.stringify(result)).toBeTruthy();
+  expect(result.reachableNeighborStaysUnknown, JSON.stringify(result)).toBeTruthy();
+  expect(result.changeCount).toBeGreaterThan(0);
+});
+
+test('[nurikabe] auto tactic toggle applies No 2x2 ocean after move', async ({ page }) => {
+  await page.goto('/nurikabe/');
+
+  const result = await page.evaluate(() => {
+    const panel = document.getElementById('tacticsList');
+    const no2x2Toggle = panel.querySelector('input[data-tactic-id="no-2x2-ocean"]');
+    const no2x2Button = panel.querySelector('button[data-tactic-id="no-2x2-ocean"]');
+
+    if (!no2x2Toggle || !no2x2Button) {
+      return { ok: false, reason: 'tactic controls missing' };
+    }
+
+    // Enable auto mode.
+    no2x2Toggle.checked = true;
+    no2x2Toggle.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Create a 3-sea + 1-unknown 2x2 pattern directly in board state.
+    const state = window.__NURIKABE_DEBUG;
+    const puzzle = state.getPuzzle();
+    const grid = state.getGrid();
+
+    const candidates = [];
+    for (let r = 0; r < puzzle.size - 1; r++) {
+      for (let c = 0; c < puzzle.size - 1; c++) {
+        const block = [
+          { r, c },
+          { r: r + 1, c },
+          { r, c: c + 1 },
+          { r: r + 1, c: c + 1 }
+        ];
+        if (block.some((cell) => puzzle.clueByKey[`${cell.r},${cell.c}`])) continue;
+        candidates.push(block);
+      }
+    }
+
+    if (!candidates.length) return { ok: false, reason: 'no candidate block found' };
+
+    const block = candidates[0];
+    grid[block[0].r][block[0].c] = 2;
+    grid[block[1].r][block[1].c] = 2;
+    grid[block[2].r][block[2].c] = 2;
+    grid[block[3].r][block[3].c] = 0;
+    state.setGrid(grid);
+
+    // Apply with manual tactic once to verify base behavior and clear status noise.
+    no2x2Button.click();
+
+    const after = state.getGrid();
+    return {
+      ok: true,
+      forced: after[block[3].r][block[3].c] === 1
+    };
+  });
+
+  expect(result.ok, JSON.stringify(result)).toBeTruthy();
+  expect(result.forced, JSON.stringify(result)).toBeTruthy();
+});
+
 // ── Hub / multi-game navigation tests ─────────────────────────────────────────
 
-test('[cross-game] hub landing page loads and shows both game tiles', async ({ page }) => {
+test('[cross-game] hub landing page loads and shows all game tiles', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/Games/i);
   const kingMaxLink = page.locator('a[href*="king-max"]');
   const nonogramLink = page.locator('a[href*="nonogram"]');
+  const nurikabeLink = page.locator('a[href*="nurikabe"]');
   await expect(kingMaxLink).toBeVisible();
   await expect(nonogramLink).toBeVisible();
+  await expect(nurikabeLink).toBeVisible();
   await expect(kingMaxLink).not.toHaveClass(/coming-soon/);
   await expect(nonogramLink).not.toHaveClass(/coming-soon/);
+  await expect(nurikabeLink).not.toHaveClass(/coming-soon/);
 });
 
 test('[cross-game] hub game tiles link to reachable pages', async ({ page }) => {
@@ -811,8 +1184,9 @@ test('[cross-game] king-max page has site nav with Home link and game dropdown',
   const gameSelect = nav.getByLabel('Switch game');
   await expect(gameSelect).toBeVisible();
   await expect(gameSelect).toHaveValue('/games/king-max/');
-  await expect(gameSelect.locator('option')).toHaveCount(2);
+  await expect(gameSelect.locator('option')).toHaveCount(3);
   await expect(gameSelect.locator('option[value="/games/nonogram/"]')).toHaveText('Nonogram');
+  await expect(gameSelect.locator('option[value="/games/nurikabe/"]')).toHaveText('Nurikabe');
 });
 
 test('[cross-game] nonogram page has site nav with Home link and game dropdown', async ({ page }) => {
@@ -823,8 +1197,22 @@ test('[cross-game] nonogram page has site nav with Home link and game dropdown',
   const gameSelect = nav.getByLabel('Switch game');
   await expect(gameSelect).toBeVisible();
   await expect(gameSelect).toHaveValue('/games/nonogram/');
-  await expect(gameSelect.locator('option')).toHaveCount(2);
+  await expect(gameSelect.locator('option')).toHaveCount(3);
   await expect(gameSelect.locator('option[value="/games/king-max/"]')).toHaveText('King Max');
+  await expect(gameSelect.locator('option[value="/games/nurikabe/"]')).toHaveText('Nurikabe');
+});
+
+test('[cross-game] nurikabe page has site nav with Home link and game dropdown', async ({ page }) => {
+  await page.goto('/nurikabe/');
+  const nav = page.locator('nav.site-nav');
+  await expect(nav).toBeVisible();
+  await expect(nav.locator('a[href="/games/"]')).toBeVisible();
+  const gameSelect = nav.getByLabel('Switch game');
+  await expect(gameSelect).toBeVisible();
+  await expect(gameSelect).toHaveValue('/games/nurikabe/');
+  await expect(gameSelect.locator('option')).toHaveCount(3);
+  await expect(gameSelect.locator('option[value="/games/king-max/"]')).toHaveText('King Max');
+  await expect(gameSelect.locator('option[value="/games/nonogram/"]')).toHaveText('Nonogram');
 });
 
 test('[cross-game] tactical stories footer links resolve to shared stories path on localhost', async ({ page }) => {
@@ -855,6 +1243,7 @@ test('[cross-game] game registry GAMES has king-max and nonogram with equal shap
   expect(result.count).toBeGreaterThanOrEqual(2);
   expect(result.ids).toContain('king-max');
   expect(result.ids).toContain('nonogram');
+  expect(result.ids).toContain('nurikabe');
 });
 
 test('[cross-game] GAME_ADAPTERS expose setup model for both games', async ({ page }) => {
@@ -881,6 +1270,7 @@ test('[cross-game] GAME_ADAPTERS expose setup model for both games', async ({ pa
   expect(result.count).toBeGreaterThanOrEqual(2);
   expect(result.ids).toContain('king-max');
   expect(result.ids).toContain('nonogram');
+  expect(result.ids).toContain('nurikabe');
   expect(result.invalidAdapters).toHaveLength(0);
 });
 
@@ -895,5 +1285,12 @@ test('[cross-game] canonical nonogram html path loads with styles and board', as
   await page.goto('/games/nonogram/html/');
   await expect(page.locator('nav.site-nav').getByLabel('Switch game')).toHaveValue('/games/nonogram/');
   await expect(page.locator('#board .nonogram-cell').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New puzzle' })).toBeVisible();
+});
+
+test('[cross-game] canonical nurikabe html path loads with styles and board', async ({ page }) => {
+  await page.goto('/games/nurikabe/html/');
+  await expect(page.locator('nav.site-nav').getByLabel('Switch game')).toHaveValue('/games/nurikabe/');
+  await expect(page.locator('#board .nurikabe-cell').first()).toBeVisible();
   await expect(page.getByRole('button', { name: 'New puzzle' })).toBeVisible();
 });

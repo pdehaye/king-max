@@ -415,6 +415,32 @@ Acceptance criteria:
 
 ## Progress Log
 
+### Slice 11 completed (2026-07-18)
+
+- Added Nurikabe as a third game with canonical source roots under `games/nurikabe/`:
+	- `games/nurikabe/html/index.html`
+	- `games/nurikabe/js/*`
+	- `games/nurikabe/specific/adapter.js`
+	- `games/nurikabe/stories/nurikabe-basics.stories.js`
+	- `games/nurikabe/scripts/`
+- Integrated Nurikabe into shared registration and navigation:
+	- `generic/game-registry.js`
+	- cross-game navigation now includes king-max, nonogram, and nurikabe
+- Integrated Nurikabe route rendering and static output wiring:
+	- `generic/scripts/render-route-html.mjs`
+	- `package.json` site build scripts now emit `_site/nurikabe/`
+	- `local-test-server.mjs` now advertises the Nurikabe route
+- Added Nurikabe regression and cross-game coverage:
+	- `[nurikabe]` tests for logic validity, share/restore, and win banner flow
+	- cross-game nav and canonical HTML assertions updated for third game
+	- added `npm run test:nurikabe` and updated `npm run test:games`
+- Added Storybook coverage for Nurikabe via `games/nurikabe/stories/nurikabe-basics.stories.js` and `.storybook/main.js`.
+- Verified with:
+	- `npm run test:nurikabe`
+	- stress repeat of the Nurikabe logic regression
+	- `npm run build:site`
+	- `npm run build-storybook`
+
 ### Slice 1 completed (2026-07-07)
 
 - Added initial generic/specific runtime scaffold:

@@ -170,10 +170,6 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
   font-size: 13px;
 }
 
-.chip.mistakes {
-  color: var(--seal);
-}
-
 .share-status {
   min-height: 18px;
   font-size: 12px;
@@ -342,7 +338,6 @@ button svg { width: 16px; height: 16px; flex-shrink: 0; }
 
   <div class="stats">
     <div class="chip">⏱ <b id="timer">0:00</b></div>
-    <div class="chip mistakes">✕ <b id="mistakes">0</b> mistakes</div>
     <div class="chip">🧩 <b id="difficultyScore">–</b></div>
     <div class="chip">Tier <b id="difficultyTier">–</b></div>
   </div>
@@ -449,7 +444,6 @@ let solved = false;
 let seconds = 0;
 let timerInterval = null;
 let started = false;
-let mistakes = boardState.mistakes;
 let currentDifficultyScore = boardState.difficultyScore;
 let currentDifficultyTier = boardState.difficultyTier;
 let difficultyWeights = loadDifficultyWeights();
@@ -465,7 +459,6 @@ function createBoardState(snapshot = null) {
     colClues: Array.isArray(snapshot?.colClues) ? snapshot.colClues.map((clues) => clues.slice()) : [],
     solution: clone2DGrid(snapshot?.solution),
     grid: clone2DGrid(snapshot?.grid),
-    mistakes: Number.isInteger(snapshot?.mistakes) && snapshot.mistakes >= 0 ? snapshot.mistakes : 0,
     difficultyScore: Number.isFinite(snapshot?.difficultyScore) ? snapshot.difficultyScore : null,
     difficultyTier: Number.isInteger(snapshot?.difficultyTier) && snapshot.difficultyTier >= 1
       ? snapshot.difficultyTier
@@ -481,13 +474,11 @@ function syncBoardStateRefs() {
 }
 
 function syncBoardStateMetaToState() {
-  mistakes = boardState.mistakes;
   currentDifficultyScore = boardState.difficultyScore;
   currentDifficultyTier = boardState.difficultyTier;
 }
 
 function syncStateMetaToBoardState() {
-  boardState.mistakes = mistakes;
   boardState.difficultyScore = currentDifficultyScore;
   boardState.difficultyTier = currentDifficultyTier;
 }
@@ -498,7 +489,6 @@ let stepAnnotationClearFn = null;
 
 const boardEl = document.getElementById('board');
 const timerEl = document.getElementById('timer');
-const mistakesEl = document.getElementById('mistakes');
 const difficultyScoreEl = document.getElementById('difficultyScore');
 const difficultyTierEl = document.getElementById('difficultyTier');
 const hintTextEl = document.getElementById('hintText');
@@ -532,10 +522,6 @@ function formatTime(s) {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
-}
-
-function updateMistakesDisplay() {
-  mistakesEl.textContent = String(mistakes);
 }
 
 function updateDifficultyDisplay() {
@@ -648,7 +634,6 @@ function encodeBoardStateForUrl() {
     colClues: boardState.colClues,
     solution: boardState.solution,
     grid: boardState.grid,
-    mistakes: boardState.mistakes,
     difficultyScore: boardState.difficultyScore,
     difficultyTier: boardState.difficultyTier
   };
@@ -675,10 +660,6 @@ function decodeBoardStateFromUrl(encoded) {
     const decodedGrid = normalize2DGrid(payload.grid, rows, cols, isValidGridValue);
     if (!decodedSolution || !decodedGrid) return null;
 
-    const decodedMistakes = Number.isInteger(payload.mistakes) && payload.mistakes >= 0
-      ? payload.mistakes
-      : 0;
-
     const decodedDifficultyScore = Number.isFinite(payload.difficultyScore)
       ? payload.difficultyScore
       : null;
@@ -691,7 +672,6 @@ function decodeBoardStateFromUrl(encoded) {
       colClues: rawColClues,
       solution: decodedSolution,
       grid: decodedGrid,
-      mistakes: decodedMistakes,
       difficultyScore: decodedDifficultyScore,
       difficultyTier: decodedDifficultyTier
     };
@@ -755,15 +735,8 @@ function applySnapshotToBoard(snapshot) {
   boardState = createBoardState(snapshot);
   syncBoardStateRefs();
   syncBoardStateMetaToState();
-  if (Number.isFinite(boardState.difficultyScore) && Number.isInteger(boardState.difficultyTier)) {
-    currentDifficultyScore = boardState.difficultyScore;
-    currentDifficultyTier = boardState.difficultyTier;
-  } else {
-    const evaluation = evaluateNonogramDifficulty(rowClues, colClues, { difficultyWeights });
-    currentDifficultyScore = evaluation.score;
-    currentDifficultyTier = evaluation.maxTier;
-    syncStateMetaToBoardState();
-  }
+  currentDifficultyScore = boardState.difficultyScore;
+  currentDifficultyTier = boardState.difficultyTier;
   solved = false;
 
   applyBoardSizing(rowClues.length, colClues.length, rowClues, colClues);
@@ -784,14 +757,13 @@ function applySnapshotToBoard(snapshot) {
     colClues
   );
 
-  updateMistakesDisplay();
   updateDifficultyDisplay();
   if (isSolved(grid, rowClues, colClues)) {
     solved = true;
     clearInterval(timerInterval);
     timerInterval = null;
     started = false;
-    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
     winBanner.classList.add('visible');
   } else {
     winBanner.classList.remove('visible');
@@ -810,11 +782,9 @@ function startNewGame() {
   solved = false;
   winBanner.classList.remove('visible');
   resetTimer();
-  mistakes = 0;
   currentDifficultyScore = null;
   currentDifficultyTier = null;
   syncStateMetaToBoardState();
-  updateMistakesDisplay();
   updateDifficultyDisplay();
   setShareStatus('');
 
@@ -833,7 +803,6 @@ function startNewGame() {
       grid: Array.from({ length: puzzle.rowClues.length }, () =>
         new Array(puzzle.colClues.length).fill(CELL_STATES.UNKNOWN)
       ),
-      mistakes: 0,
       difficultyScore: Number.isFinite(puzzle.score) ? puzzle.score : null,
       difficultyTier: Number.isInteger(puzzle.tier) ? puzzle.tier : null
     });
@@ -866,11 +835,6 @@ function startNewGame() {
 function handleCellChange(r, c, newState) {
   startTimer();
 
-  if (newState === CELL_STATES.FILLED && solution[r][c] !== CELL_STATES.FILLED) {
-    mistakes++;
-    updateMistakesDisplay();
-  }
-
   // Sync visual with grid
   if (boardRefs) {
     refreshClueHighlights(
@@ -885,7 +849,7 @@ function handleCellChange(r, c, newState) {
   if (isSolved(grid, rowClues, colClues)) {
     clearInterval(timerInterval);
     solved = true;
-    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
     winBanner.classList.add('visible');
     return;
   }
@@ -916,9 +880,7 @@ function clearBoard() {
   stepInterface = null;
   hintTextEl.textContent = '';
   resetTimer();
-  mistakes = 0;
   syncStateMetaToBoardState();
-  updateMistakesDisplay();
   updateDifficultyDisplay();
   solved = false;
   setShareStatus('');
@@ -996,7 +958,7 @@ function doStep() {
       if (isSolved(grid, rowClues, colClues)) {
         clearInterval(timerInterval);
         solved = true;
-        winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
+        winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
         winBanner.classList.add('visible');
       }
       updateBoardStateUrl();
@@ -1032,10 +994,7 @@ function setTacticStatus(msg, isError = false) {
 
 function applyTacticById(tacticId, options = {}) {
   const { silent = false } = options;
-  if (solved) {
-    if (!silent) setTacticStatus('Puzzle already solved.', true);
-    return false;
-  }
+  if (solved) return false;
   if (rowClues.length === 0) {
     if (!silent) setTacticStatus('No puzzle loaded.', true);
     return false;
@@ -1076,7 +1035,7 @@ function applyTacticById(tacticId, options = {}) {
   if (isSolved(grid, rowClues, colClues)) {
     clearInterval(timerInterval);
     solved = true;
-    winStatsEl.textContent = `Solved in ${formatTime(seconds)} · ${mistakes} mistakes`;
+    winStatsEl.textContent = `Solved in ${formatTime(seconds)}`;
     winBanner.classList.add('visible');
   }
   updateBoardStateUrl();

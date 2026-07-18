@@ -31,5 +31,6 @@ This repository ships custom GitHub Copilot agents and skills to support develop
 - For behavior changes, run gameplay-tdd-cycle before or during implementation.
 - For broad requests, pair an implementation agent with gameplay-playtest before merging.
 - For bug fixes, add gameplay-regression-guard evidence before merge.
-- When deterministic tactics change, update tactic stories in the same PR using deterministic-story-coverage.
+- When any game tactic changes (add/remove/rename), update the matching Storybook example in the same PR.
+- Keep one Storybook example per tactic and use deterministic-story-coverage to audit tactic-story drift.
 - Keep deployment changes small and aligned with static hosting on GitHub Pages.
